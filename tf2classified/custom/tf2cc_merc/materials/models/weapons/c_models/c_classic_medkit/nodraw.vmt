@@ -1,0 +1,6 @@
+// tf2cc: OF-only/hidden slot, never drawn on stock clients
+"UnlitGeneric"
+{
+	"$basetexture" "dev/dev_blendmeasure"
+	"$no_draw" "1"
+}

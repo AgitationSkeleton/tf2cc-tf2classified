@@ -1,0 +1,5 @@
+// tf2cc alias (tools/gen_material_aliases.py)
+"Patch"
+{
+	include "materials/models/weapons/c_models/c_classic_medkit/c_classic_medkit_red.vmt"
+}

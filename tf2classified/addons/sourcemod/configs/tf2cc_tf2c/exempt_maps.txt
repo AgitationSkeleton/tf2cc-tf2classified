@@ -1,0 +1,19 @@
+// tf2cc for TF2 Classified: maps where the Mercenary is off (they already play him).
+// One map per line: an exact name, or a prefix ending in * (case-insensitive). // comments.
+// tf2cc_merc_exempt_autodetect 1 (default) also exempts any map that packs the DM-reclassified
+// Merc VScript (scripts/vscripts/tf2c_merc_soldieronly.nut).
+//
+// Survey 2026-11-15 (tf2classified-1/-2/-3 maps): every map with these prefixes packs
+// tf2c_merc_soldieronly.nut (the "deathmatch reclassified" set):
+4dm_*
+4rdm_*
+4gg_*
+4ig_*
+inf_*
+2mctf_*
+4mctf_*
+4mdom_*
+rdm_*
+// Stock TF2C team deathmatch maps (4tdm_blockfortress*, 4tdm_cragg, 4tdm_gasworks) do NOT
+// script the Mercenary; uncomment to turn him off there too:
+//4tdm_*

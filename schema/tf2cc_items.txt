@@ -1,0 +1,1642 @@
+// tf2cc for TF2 Classified: the Mercenary items only (merge with tools/tf2c/merge_schema.py)
+"items_game"
+{
+	"items"
+	{
+		"30099"
+		{
+			"name"	"tf2cc_merc_body"
+			"item_name"	"Mercenary"
+			"item_quality"	"normal"
+			"item_class"	"tf_wearable"
+			"item_slot"	"misc"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"max health additive penalty"
+				{
+					"attribute_class"	"add_maxhealth"
+					"value"	"-50"
+				}
+				"move speed bonus"
+				{
+					"attribute_class"	"mult_player_movespeed"
+					"value"	"1.3333"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+		}
+		"30100"
+		{
+			"name"	"tf2cc_merc_crowbar"
+			"item_name"	"Crowbar"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shovel"
+			"item_slot"	"melee"
+			"anim_slot"	"MELEE"
+			"bucket"	"2"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_crowbar_mercenary_4a7d7c6d.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_crowbar_684d36b9.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0.6154"
+				}
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.5"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_melee_miss"	"tf2cc.Weapon_Crowbar_TFC.Miss"
+				"sound_melee_hit"	"tf2cc.Weapon_Crowbar_TFC.HitFlesh"
+				"sound_melee_hit_world"	"tf2cc.Weapon_Crowbar_TFC.Melee_HitWorld"
+				"sound_burst"	"tf2cc.Weapon_Crowbar_TFC.MissCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_MELEE"	"ACT_DOD_CROUCHWALK_AIM_C96"
+					"ACT_MP_ATTACK_CROUCH_MELEE"	"ACT_DOD_CROUCHWALK_IDLE_MP40"
+					"ACT_MP_ATTACK_STAND_MELEE"	"ACT_DOD_CROUCH_AIM_MG"
+					"ACT_MP_ATTACK_SWIM_MELEE"	"ACT_DOD_CROUCH_ZOOMED"
+					"ACT_MP_CROUCHWALK_MELEE"	"ACT_DOD_HS_IDLE_TOMMY"
+					"ACT_MP_CROUCH_MELEE"	"ACT_DOD_PRIMARYATTACK_MP44"
+					"ACT_MP_JUMP_FLOAT_MELEE"	"ACT_DOD_PRONEWALK_IDLE_BOLT"
+					"ACT_MP_JUMP_LAND_MELEE"	"ACT_DOD_PRONE_AIM_MP44"
+					"ACT_MP_JUMP_START_MELEE"	"ACT_DOD_RELOAD_BAZOOKA"
+					"ACT_MP_RUN_MELEE"	"ACT_DOD_SECONDARYATTACK_CROUCH"
+					"ACT_MP_STAND_MELEE"	"ACT_DOD_SPRINT_IDLE_MP40"
+					"ACT_MP_SWIM_MELEE"	"ACT_DOD_STAND_AIM_RIFLE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket_team/bucket_crowbar"
+			"image_inventory_teamcolor"	"1"
+		}
+		"30101"
+		{
+			"name"	"tf2cc_merc_leadpipe"
+			"item_name"	"Lead Pipe"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shovel"
+			"item_slot"	"melee"
+			"anim_slot"	"MELEE"
+			"bucket"	"2"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_lead_pipe.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_leadpipe_merc.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0.6154"
+				}
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.875"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_melee_miss"	"tf2cc.Weapon_Crowbar_TFC.Miss"
+				"sound_melee_hit"	"tf2cc.Weapon_Crowbar_TFC.HitFlesh"
+				"sound_melee_hit_world"	"tf2cc.Weapon_Crowbar_TFC.Melee_HitWorld"
+				"sound_burst"	"tf2cc.Weapon_Crowbar_TFC.MissCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_MELEE"	"ACT_DOD_CROUCHWALK_AIM_C96"
+					"ACT_MP_ATTACK_CROUCH_MELEE"	"ACT_DOD_CROUCHWALK_IDLE_MP40"
+					"ACT_MP_ATTACK_STAND_MELEE"	"ACT_DOD_CROUCH_AIM_MG"
+					"ACT_MP_ATTACK_SWIM_MELEE"	"ACT_DOD_CROUCH_ZOOMED"
+					"ACT_MP_CROUCHWALK_MELEE"	"ACT_DOD_HS_IDLE_TOMMY"
+					"ACT_MP_CROUCH_MELEE"	"ACT_DOD_PRIMARYATTACK_MP44"
+					"ACT_MP_JUMP_FLOAT_MELEE"	"ACT_DOD_PRONEWALK_IDLE_BOLT"
+					"ACT_MP_JUMP_LAND_MELEE"	"ACT_DOD_PRONE_AIM_MP44"
+					"ACT_MP_JUMP_START_MELEE"	"ACT_DOD_RELOAD_BAZOOKA"
+					"ACT_MP_RUN_MELEE"	"ACT_DOD_SECONDARYATTACK_CROUCH"
+					"ACT_MP_STAND_MELEE"	"ACT_DOD_SPRINT_IDLE_MP40"
+					"ACT_MP_SWIM_MELEE"	"ACT_DOD_STAND_AIM_RIFLE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_leadpipe"
+		}
+		"30102"
+		{
+			"name"	"tf2cc_merc_knife"
+			"item_name"	"Combat Knife"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shovel"
+			"item_slot"	"melee"
+			"anim_slot"	"MELEE"
+			"bucket"	"2"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_classic_knife_ddc9dc46.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_classic_knife.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0.6154"
+				}
+				"crit mod disabled"
+				{
+					"attribute_class"	"mult_crit_chance"
+					"value"	"0"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_melee_miss"	"tf2cc.Weapon_Knife.Miss"
+				"sound_melee_hit"	"tf2cc.Weapon_Knife.HitFlesh"
+				"sound_melee_hit_world"	"tf2cc.Weapon_Knife.HitWorld"
+				"sound_burst"	"tf2cc.Weapon_Knife.MissCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_MELEE"	"ACT_DOD_CROUCHWALK_AIM_KNIFE"
+					"ACT_MP_ATTACK_CROUCH_MELEE"	"ACT_DOD_CROUCHWALK_IDLE_PSCHRECK"
+					"ACT_MP_ATTACK_STAND_MELEE"	"ACT_DOD_CROUCH_AIM_PISTOL"
+					"ACT_MP_ATTACK_STAND_MELEE_SECONDARY"	"ACT_DOD_CROUCH_AIM_PSCHRECK"
+					"ACT_MP_ATTACK_SWIM_MELEE"	"ACT_DOD_CROUCH_ZOOM_PSCHRECK"
+					"ACT_MP_CROUCHWALK_MELEE"	"ACT_DOD_PRIMARYATTACK_BAR"
+					"ACT_MP_CROUCH_MELEE"	"ACT_DOD_PRIMARYATTACK_PRONE_BAR"
+					"ACT_MP_JUMP_FLOAT_MELEE"	"ACT_DOD_PRONEWALK_IDLE_MP40"
+					"ACT_MP_JUMP_LAND_MELEE"	"ACT_DOD_PRONE_AIM_SPADE"
+					"ACT_MP_JUMP_START_MELEE"	"ACT_DOD_RELOAD_CROUCH_BAR"
+					"ACT_MP_RUN_MELEE"	"ACT_DOD_SECONDARYATTACK_PRONE"
+					"ACT_MP_STAND_MELEE"	"ACT_DOD_SPRINT_IDLE_RIFLE"
+					"ACT_MP_SWIM_MELEE"	"ACT_DOD_STAND_IDLE_30CAL"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_classic_knife"
+		}
+		"30103"
+		{
+			"name"	"tf2cc_merc_fists"
+			"item_name"	"Fists"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_fists"
+			"item_slot"	"melee"
+			"anim_slot"	"MELEE"
+			"bucket"	"2"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_berserk_merc_59804fe2.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_melee_miss"	"tf2cc.Weapon_Berserk.Miss"
+				"sound_melee_hit"	"tf2cc.Weapon_Berserk.HitFlesh"
+				"sound_melee_hit_world"	"tf2cc.Weapon_Berserk.HitWorld"
+				"sound_burst"	"tf2cc.Weapon_Berserk.MissCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_MELEE"	"ACT_DOD_CROUCHWALK_AIM_30CAL"
+					"ACT_MP_ATTACK_CROUCH_MELEE"	"ACT_DOD_CROUCHWALK_IDLE_C96"
+					"ACT_MP_ATTACK_STAND_MELEE"	"ACT_DOD_CROUCH_AIM_GREN_FRAG"
+					"ACT_MP_ATTACK_SWIM_MELEE"	"ACT_DOD_CROUCH_IDLE_RIFLE"
+					"ACT_MP_CROUCHWALK_MELEE"	"ACT_DOD_HS_IDLE_MP44"
+					"ACT_MP_CROUCH_MELEE"	"ACT_DOD_PRIMARYATTACK_GREN_STICK"
+					"ACT_MP_JUMP_FLOAT_MELEE"	"ACT_DOD_PRONEWALK_AIM_SPADE"
+					"ACT_MP_JUMP_LAND_MELEE"	"ACT_DOD_PRONE_AIM_GREN_STICK"
+					"ACT_MP_JUMP_START_MELEE"	"ACT_DOD_PRONE_ZOOM_FORWARD_RIFLE"
+					"ACT_MP_RUN_MELEE"	"ACT_DOD_RUN_ZOOM_BOLT"
+					"ACT_MP_STAND_MELEE"	"ACT_DOD_SPRINT_IDLE_BOLT"
+					"ACT_MP_SWIM_MELEE"	"ACT_DOD_STAND_AIM_MP40"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket_team/bucket_berserk"
+			"image_inventory_teamcolor"	"1"
+		}
+		"30104"
+		{
+			"name"	"tf2cc_merc_chainsaw"
+			"item_name"	"Chainsaw"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shovel"
+			"item_slot"	"melee"
+			"anim_slot"	"MELEE"
+			"bucket"	"2"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_chainsaw_2eef2d64.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_chainsaw_dm.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0"
+				}
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.75"
+				}
+				"mult charge turn control"
+				{
+					"attribute_class"	"charge_turn_control"
+					"value"	"50"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_double_shot"	"tf2cc.Silent"
+				"sound_special1"	"tf2cc.Silent"
+				"sound_special2"	"tf2cc.Silent"
+				"sound_special3"	"tf2cc.Silent"
+				"sound_burst"	"tf2cc.Silent"
+				"sound_melee_miss"	"tf2cc.Silent"
+				"sound_melee_hit"	"tf2cc.Silent"
+				"sound_melee_hit_world"	"tf2cc.Silent"
+				"sound_single_shot"	"tf2cc.Silent"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_MELEE"	"ACT_DOD_CROUCHWALK_AIM_BAZOOKA"
+					"ACT_MP_ATTACK_CROUCH_MELEE"	"ACT_DOD_HS_CROUCH_PISTOL"
+					"ACT_MP_ATTACK_STAND_MELEE"	"ACT_DOD_HS_CROUCH_TOMMY"
+					"ACT_MP_ATTACK_SWIM_MELEE"	"ACT_DOD_HS_IDLE_BAZOOKA"
+					"ACT_MP_CROUCHWALK_MELEE"	"ACT_DOD_HS_IDLE_PSCHRECK"
+					"ACT_MP_CROUCH_MELEE"	"ACT_DOD_PRIMARYATTACK_MG"
+					"ACT_MP_JUMP_FLOAT_MELEE"	"ACT_DOD_PRONEWALK_IDLE_BAR"
+					"ACT_MP_JUMP_LAND_MELEE"	"ACT_DOD_PRONE_AIM_MG"
+					"ACT_MP_JUMP_START_MELEE"	"ACT_DOD_PRONE_ZOOM_RIFLE"
+					"ACT_MP_RUN_MELEE"	"ACT_DOD_RUN_ZOOM_RIFLE"
+					"ACT_MP_STAND_MELEE"	"ACT_DOD_SPRINT_IDLE_GREASE"
+					"ACT_MP_SWIM_MELEE"	"ACT_DOD_STAND_AIM_PISTOL"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_chainsaw"
+		}
+		"30105"
+		{
+			"name"	"tf2cc_merc_pistol"
+			"item_name"	"Pistol"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_pistol"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_pistol_mercenary_cd6ad2c2.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_pistol_mercenary.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"1.25"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.2821"
+				}
+				"spread penalty"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"0.5"
+				}
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"0.5"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_PistolDM.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_Pistol.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_PistolDM.Single"
+				"sound_burst"	"tf2cc.Weapon_PistolDM.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_AIM_PISTOL"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCHWALK_ZOOMED"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_IDLE"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_DEPLOY_30CAL"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_CROUCH"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_DEPLOYED"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONEWALK_IDLE_RIFLE"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_DEPLOY_MG"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_M1CARBINE"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_MP40"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_PRONE_M1CARBINE"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_GREASE"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_GREASE"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SECONDARYATTACK_PRONE_TOMMY"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM_30CAL"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_C96"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_pistol_merc"
+		}
+		"30106"
+		{
+			"name"	"tf2cc_merc_akimbo"
+			"item_name"	"Akimbo Pistols"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_pistol"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_akimbo_pistols_mercenary_ce77d46e.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_pistol_akimbo.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.8667"
+				}
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"2.5"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"2.5641"
+				}
+				"weapon spread bonus"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"2"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_Akimbo_Pistols.ClipOut"
+				"sound_empty"	"tf2cc.Weapon_Akimbo_Pistols.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_Akimbo_Pistols.Single"
+				"sound_burst"	"tf2cc.Weapon_Akimbo_Pistols.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_AIM_MP44"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCHWALK_IDLE_TOMMY"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_AIM_TOMMY"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_DEPLOYED"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_C96"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_C96"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONEWALK_IDLE_PSCHRECK"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_DEPLOY_30CAL"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_C96"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_M1CARBINE"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_PRONE_K43"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_C96"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_C96"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SECONDARYATTACK_PRONE_RIFLE"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_BOLT"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_akimbo"
+		}
+		"30107"
+		{
+			"name"	"tf2cc_merc_revolver"
+			"item_name"	"Magnum Revolver"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_revolver"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_revolver_dm_6190a4e1.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_revolver_dm.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"1.125"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.228"
+				}
+				"spread penalty"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"0.25"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_Revolver.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_Revolver.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_RevolverDM.Single"
+				"sound_burst"	"tf2cc.Weapon_RevolverDM.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_AIM_RIFLE"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCHWALK_ZOOM_RIFLE"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_IDLE_BOLT"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_HS_CROUCH"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_CROUCH_KNIFE"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_DEPLOYED_RIFLE"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONEWALK_IDLE_TOMMY"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_DEPLOY_TOMMY"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_MP44"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_MP44"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_PRONE_MP40"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_GREN_FRAG"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_MG"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SECONDARYATTACK_TOMMY"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM_BAZOOKA"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_MG"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_sixshooter"
+		}
+		"30108"
+		{
+			"name"	"tf2cc_merc_shotgun"
+			"item_name"	"Shotgun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shotgun_soldier"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_shotgun_merc_71883f07.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_shotgun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"1.0667"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_Shotgun.Single"
+				"sound_empty"	"tf2cc.Weapon_Shotgun.Empty"
+				"sound_reload"	"tf2cc.Weapon_Shotgun.WorldReload"
+				"sound_special1"	"tf2cc.Weapon_Shotgun.Pump"
+				"sound_burst"	"tf2cc.Weapon_Shotgun.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_AIM_TOMMY"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCH_AIM_30CAL"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_IDLE_GREASE"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_HS_CROUCH_BAZOOKA"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_DEPLOYED"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_GREN_FRAG"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONE_AIM_BAR"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_ZOOMED"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_PSCHRECK"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_PRONE_BAZOOKA"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY_END"	"ACT_DOD_RELOAD_PRONE_BOLT"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY_LOOP"	"ACT_DOD_RELOAD_PRONE_C96"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_PRONE_RIFLE"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY_END"	"ACT_DOD_RELOAD_PRONE_RIFLEGRENADE"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY_LOOP"	"ACT_DOD_RELOAD_PRONE_TOMMY"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_MP40"
+					"ACT_MP_RELOAD_STAND_SECONDARY_END"	"ACT_DOD_RUN_AIM_MP44"
+					"ACT_MP_RELOAD_STAND_SECONDARY_LOOP"	"ACT_DOD_RUN_AIM_PISTOL"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_MP44"
+					"ACT_MP_RELOAD_SWIM_SECONDARY_END"	"ACT_DOD_RUN_IDLE_PISTOL"
+					"ACT_MP_RELOAD_SWIM_SECONDARY_LOOP"	"ACT_DOD_RUN_IDLE_PSCHRECK"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SPRINT_AIM_GREN_STICK"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM_C96"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_MP44"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_shotgun"
+		}
+		"30109"
+		{
+			"name"	"tf2cc_merc_smg"
+			"item_name"	"Combat SMG"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_smg"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_smg_dm_06c44039.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_smg_dm.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"1.25"
+				}
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.8"
+				}
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"1.4"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.4634"
+				}
+				"weapon spread bonus"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"1.25"
+				}
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"1.8667"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_SMG.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_SMG.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_SMG_DM.Single"
+				"sound_burst"	"tf2cc.Weapon_SMG_DM.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_IDLE"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCH_AIM_BAR"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_IDLE_MG"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_HS_CROUCH_K98"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_DEPLOYED_30CAL"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_GREN_STICK"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONE_AIM_BAZOOKA"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_ZOOM_BAZOOKA"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_RIFLE"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_PSCHRECK"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_PSCHRECK"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_RIFLE"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SPRINT_AIM_KNIFE"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM_GREASE"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_PISTOL"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_smgdm"
+		}
+		"30110"
+		{
+			"name"	"tf2cc_merc_tommygun"
+			"item_name"	"Tommy Gun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_smg"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_tommygun_merc_4acf309f.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_tommygun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"1.5"
+				}
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"1.6"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.0813"
+				}
+				"weapon spread bonus"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"1.5"
+				}
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"1.0667"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_SMG.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_SMG.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_Tommygun.Single"
+				"sound_burst"	"tf2cc.Weapon_Tommygun.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_IDLE_BAR"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCH_AIM_BOLT"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_IDLE_MP44"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_HS_CROUCH_MG42"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_PRIMARYATTACK_DEPLOYED_RIFLE"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PRONE_MG"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONE_AIM_C96"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_ZOOM_FORWARD_BAZOOKA"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_CROUCH_TOMMY"
+					"ACT_MP_RELOAD_AIRWALK_SECONDARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED_BAR"
+					"ACT_MP_RELOAD_CROUCH_SECONDARY"	"ACT_DOD_RELOAD_RIFLEGRENADE"
+					"ACT_MP_RELOAD_STAND_SECONDARY"	"ACT_DOD_RUN_AIM_SPADE"
+					"ACT_MP_RELOAD_SWIM_SECONDARY"	"ACT_DOD_RUN_IDLE_TOMMY"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SPRINT_IDLE_30CAL"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_STAND_AIM_GREN_STICK"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_IDLE_RIFLE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_tommygun"
+		}
+		"30111"
+		{
+			"name"	"tf2cc_merc_dynamite"
+			"item_name"	"Dynamite Bundle"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_grenadelauncher"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_dynamite_bundle_78d2fd26.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_dynamite.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"fire rate bonus"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"2.5"
+				}
+				"mod max primary clip override"
+				{
+					"attribute_class"	"mod_max_primary_clip_override"
+					"value"	"-1"
+				}
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"0.1875"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+				"custom projectile model"	"models/tf2cc/of/weapons/w_models/w_dynamite.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_DynamiteBundle.Single"
+				"sound_special2"	"tf2cc.Player.UseDeny"
+				"sound_special3"	"tf2cc.Weapon_StickyBombLauncher.ModeSwitch"
+				"sound_burst"	"tf2cc.Weapon_DynamiteBundle.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_SECONDARY"	"ACT_DOD_CROUCHWALK_AIM_GREASE"
+					"ACT_MP_ATTACK_CROUCH_SECONDARY"	"ACT_DOD_CROUCHWALK_IDLE_MP44"
+					"ACT_MP_ATTACK_STAND_SECONDARY"	"ACT_DOD_CROUCH_AIM_MP40"
+					"ACT_MP_ATTACK_SWIM_SECONDARY"	"ACT_DOD_CROUCH_ZOOM_BAZOOKA"
+					"ACT_MP_CROUCHWALK_SECONDARY"	"ACT_DOD_IDLE_ZOOMED"
+					"ACT_MP_CROUCH_SECONDARY"	"ACT_DOD_PRIMARYATTACK_PISTOL"
+					"ACT_MP_JUMP_FLOAT_SECONDARY"	"ACT_DOD_PRONEWALK_IDLE_C96"
+					"ACT_MP_JUMP_LAND_SECONDARY"	"ACT_DOD_PRONE_AIM_PISTOL"
+					"ACT_MP_JUMP_START_SECONDARY"	"ACT_DOD_RELOAD_BOLT"
+					"ACT_MP_RUN_SECONDARY"	"ACT_DOD_SECONDARYATTACK_CROUCH_MP40"
+					"ACT_MP_STAND_SECONDARY"	"ACT_DOD_SPRINT_IDLE_MP44"
+					"ACT_MP_SWIM_SECONDARY"	"ACT_DOD_STAND_AIM_SPADE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_dynamite"
+		}
+		"30112"
+		{
+			"name"	"tf2cc_merc_supershotgun"
+			"item_name"	"Super Shotgun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_shotgun_primary"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_supershotgun_mercenary_1b6d1dbb.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_supershotgun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"bullets per shot bonus"
+				{
+					"attribute_class"	"mult_bullets_per_shot"
+					"value"	"2"
+				}
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.64"
+				}
+				"weapon spread bonus"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"2.2"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.5333"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"0.5462"
+				}
+				"mod max primary clip override"
+				{
+					"attribute_class"	"mod_max_primary_clip_override"
+					"value"	"1"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_SuperShotGun.Single"
+				"sound_empty"	"tf2cc.Weapon_Scatter_Gun.Empty"
+				"sound_reload"	"tf2cc.Weapon_SuperShotGun.WorldReload"
+				"sound_special1"	"tf2cc.Weapon_SuperShotGun.ShellsIn"
+				"sound_burst"	"tf2cc.Weapon_SuperShotGun.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_30CAL"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCH_AIM_BAZOOKA"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_IDLE_MP40"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_HS_CROUCH_KNIFE"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_DEPLOYED_MG"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_KNIFE"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONE_AIM_BOLT"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_ZOOM_BOLT"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH_RIFLEGRENADE"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED_30CAL"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_RIFLE"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RUN_AIM_RIFLE"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_IDLE_TNT"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SPRINT_AIM_SPADE"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_STAND_AIM_GREN_FRAG"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE_PSCHRECK"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_supershotgun"
+		}
+		"30113"
+		{
+			"name"	"tf2cc_merc_assaultrifle"
+			"item_name"	"Assault Rifle"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_smg"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_assault_rifle_dm_aadebc15.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_assault_rifle.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"2.25"
+				}
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"1.2"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.5447"
+				}
+				"spread penalty"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"0.65"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"1.2"
+				}
+				"fire rate bonus"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"3"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+				"mod burstfire"	"3 0.2333"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_AR.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_AR.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_AR.Single"
+				"sound_burst"	"tf2cc.Weapon_AR.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_BOLT"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_GREASE"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_CROUCH_IDLE_PSCHRECK"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_HS_IDLE_MG42"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_GREN_FRAG"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_AIM_KNIFE"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_AIM_GREN_FRAG"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_PRONE_ZOOM_FORWARD_PSCHRECK"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_DEPLOYED_MG"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED_FG42"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RELOAD_TOMMY"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_AIM_TOMMY"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_RUN_ZOOM_BAZOOKA"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_BAZOOKA"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_AIM_MG"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_assaultrifle"
+		}
+		"30114"
+		{
+			"name"	"tf2cc_merc_rocketlauncher"
+			"item_name"	"Rocket Launcher"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_rocketlauncher"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_rocketlauncher_dm_e286891f.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_rocketlauncher_dm.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.8"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_QuakeRPG.Single"
+				"sound_burst"	"tf2cc.Weapon_QuakeRPG.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_SPADE"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCH_AIM"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_IDLE_C96"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_HS_CROUCH_30CAL"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_CROUCH_SPADE"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_GREASE"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONE_AIM_30CAL"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_FORWARD_ZOOMED"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH_PISTOL"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_PISTOL"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY_END"	"ACT_DOD_RELOAD_PRONE"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY_LOOP"	"ACT_DOD_RELOAD_PRONE_BAR"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_PRONE_MP44"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY_END"	"ACT_DOD_RELOAD_PRONE_PISTOL"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY_LOOP"	"ACT_DOD_RELOAD_PRONE_PSCHRECK"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RUN_AIM_GREN_STICK"
+					"ACT_MP_RELOAD_STAND_PRIMARY_END"	"ACT_DOD_RUN_AIM_KNIFE"
+					"ACT_MP_RELOAD_STAND_PRIMARY_LOOP"	"ACT_DOD_RUN_AIM_MG"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_IDLE_MP40"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SPRINT_AIM_GREN_FRAG"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_STAND_AIM_BOLT"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE_MP40"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_rocketlauncher_dm"
+		}
+		"30115"
+		{
+			"name"	"tf2cc_merc_chinalake"
+			"item_name"	"China Lake"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_grenadelauncher"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_grenadelauncher_dm_07b3de56.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_grenadelauncher_dm.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0.9"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.1667"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_GrenadeLauncherDM.Single"
+				"sound_reload"	"tf2cc.Weapon_GrenadeLauncher.WorldReload"
+				"sound_special3"	"tf2cc.Weapon_GrenadeLauncher.ModeSwitch"
+				"sound_burst"	"tf2cc.Weapon_GrenadeLauncherDM.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_BOLT"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_MG"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_KNIFE"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_CROUCH_IDLE_TOMMY"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_HS_IDLE_STICKGRENADE"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_MP40"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_BAZOOKA"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_AIM_MP40"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_BAR"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_FG42"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY_END"	"ACT_DOD_RELOAD_GARAND"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY_LOOP"	"ACT_DOD_RELOAD_GREASEGUN"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED_MG34"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY_END"	"ACT_DOD_RELOAD_PRONE_FG42"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY_LOOP"	"ACT_DOD_RELOAD_PRONE_GARAND"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RUN_AIM_30CAL"
+					"ACT_MP_RELOAD_STAND_PRIMARY_END"	"ACT_DOD_RUN_AIM_BAR"
+					"ACT_MP_RELOAD_STAND_PRIMARY_LOOP"	"ACT_DOD_RUN_AIM_BAZOOKA"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_IDLE_30CAL"
+					"ACT_MP_RELOAD_SWIM_PRIMARY_END"	"ACT_DOD_RUN_IDLE_BAR"
+					"ACT_MP_RELOAD_SWIM_PRIMARY_LOOP"	"ACT_DOD_RUN_IDLE_BAZOOKA"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SECONDARYATTACK_BOLT"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_MG"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_AIM_PSCHRECK"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_grendm"
+		}
+		"30116"
+		{
+			"name"	"tf2cc_merc_nailgun"
+			"item_name"	"Nailgun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf2c_weapon_nailgun"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_nailgun_mercenary_605caac6.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_nailgun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"1.6667"
+				}
+				"fire rate bonus"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"1.15"
+				}
+				"clip size bonus"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"1.2"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.0538"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.72"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_NailGun.Reload"
+				"sound_empty"	"tf2cc.Weapon_NailGun.ClipEmpty"
+				"sound_single_shot"	"tf2cc.Weapon_NailGun.Single"
+				"sound_burst"	"tf2cc.Weapon_NailGun.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_MP40"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_TNT"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_SPADE"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_DEFUSE_TNT"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_BOLT"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_BOLT"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_PISTOL"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_DEPLOYED"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH_BOLT"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_K43"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_PRONE_GREASEGUN"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RUN_AIM_BOLT"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_IDLE_BOLT"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SECONDARYATTACK_PRONE_MP40"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_TOMMY"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE_BAZOOKA"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_nailgun"
+		}
+		"30117"
+		{
+			"name"	"tf2cc_merc_gatling"
+			"item_name"	"Gatling Gun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_minigun"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_minigun_dm_e1f1def7.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_minigun_dm_2ebc9716.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage penalty"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"0.2222"
+				}
+				"bullets per shot bonus"
+				{
+					"attribute_class"	"mult_bullets_per_shot"
+					"value"	"2.5"
+				}
+				"weapon spread bonus"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"1.25"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.5"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_reload"	"tf2cc.Weapon_Gatling.Reload"
+				"sound_empty"	"tf2cc.Weapon_Gatling.ClipEmpty"
+				"sound_double_shot"	"tf2cc.Weapon_Gatling.Fire"
+				"sound_special1"	"tf2cc.Weapon_Gatling.WindUp"
+				"sound_special2"	"tf2cc.Weapon_Gatling.WindDown"
+				"sound_special3"	"tf2cc.Weapon_Gatling.Spin"
+				"sound_burst"	"tf2cc.Weapon_Gatling.FireCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_BAR"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_GREASE"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_GREN_STICK"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_CROUCH_IDLE_TNT"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_HS_IDLE_PISTOL"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_KNIFE"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_30CAL"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_AIM_KNIFE"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_PRONE_ZOOM_PSCHRECK"
+					"ACT_MP_RELOAD_AIRWALK_PRIMARY"	"ACT_DOD_RELOAD_DEPLOYED_MG34"
+					"ACT_MP_RELOAD_CROUCH_PRIMARY"	"ACT_DOD_RELOAD_PRONE_DEPLOYED_MG"
+					"ACT_MP_RELOAD_STAND_PRIMARY"	"ACT_DOD_RUN_AIM"
+					"ACT_MP_RELOAD_SWIM_PRIMARY"	"ACT_DOD_RUN_IDLE"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_RUN_ZOOM_PSCHRECK"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_C96"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_AIM_MP44"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_chaingun"
+		}
+		"30118"
+		{
+			"name"	"tf2cc_merc_railgun"
+			"item_name"	"Railgun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_revolver"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_railgun_mercenary_71387ffc.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_railgun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"2"
+				}
+				"fire rate bonus"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"3"
+				}
+				"mod max primary clip override"
+				{
+					"attribute_class"	"mod_max_primary_clip_override"
+					"value"	"-1"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.5833"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_Railgun.Single"
+				"sound_reload"	"tf2cc.Weapon_SniperRifle.WorldReload"
+				"sound_empty"	"tf2cc.Weapon_SniperRifle.ClipEmpty"
+				"sound_burst"	"tf2cc.Weapon_Railgun.SingleCrit"
+				"sound_special2"	"tf2cc.Weapon_Railgun.Hum"
+				"tracer_effect"	"tracer_sniper_rifle_PARENT"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_PSCHRECK"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_ZOOM_BOLT"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY_DEPLOYED"	"ACT_DOD_CROUCH_IDLE_BAZOOKA"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_IDLE_BAR"
+					"ACT_MP_ATTACK_STAND_PRIMARY_DEPLOYED"	"ACT_DOD_CROUCHWALK_ZOOM_PSCHRECK"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_DEPLOY_RIFLE"
+					"ACT_MP_CROUCHWALK_DEPLOYED"	"ACT_DOD_PRIMARYATTACK_CROUCH_GREN_STICK"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_CROUCH_GREN_FRAG"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_DEPLOYED_30CAL"
+					"ACT_MP_DEPLOYED_PRIMARY"	"ACT_DOD_RELOAD_DEPLOYED_30CAL"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_TNT"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_DEPLOY_RIFLE"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH_MP40"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SECONDARYATTACK_RIFLE"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_STAND_AIM_BAR"
+					"ACT_MP_SWIM_DEPLOYED_PRIMARY"	"ACT_DOD_RELOAD_DEPLOYED_FG42"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE_GREASE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_railgun"
+		}
+		"30119"
+		{
+			"name"	"tf2cc_merc_lightning"
+			"item_name"	"Lightning Gun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_smg"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_lightning_gun_789a9ede.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_lightning_gun.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"fire rate penalty"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"0.5"
+				}
+				"mod max primary clip override"
+				{
+					"attribute_class"	"mod_max_primary_clip_override"
+					"value"	"-1"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"1.3333"
+				}
+				"set weapon range"
+				{
+					"attribute_class"	"set_weapon_range"
+					"value"	"720"
+				}
+				"spread penalty"
+				{
+					"attribute_class"	"mult_spread_scale"
+					"value"	"0.01"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Silent"
+				"sound_special1"	"tf2cc.Weapon_LightningGun.LightningLoop"
+				"sound_special2"	"tf2cc.Weapon_LightningGun.HumLoop"
+				"sound_special3"	"tf2cc.Weapon_LightningGun.LightningEnd"
+				"sound_burst"	"tf2cc.Silent"
+				"tracer_effect"	"bullet_bignasty_tracer01"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_MG"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_RIFLE"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_RIFLE"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_CROUCH_ZOOM_RIFLE"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_BAZOOKA"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_BAZOOKA"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_MP44"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_AIM_TOMMY"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH_BAZOOKA"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SECONDARYATTACK_PRONE_BOLT"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_TNT"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE_BAR"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_lightning_gun"
+		}
+		"30120"
+		{
+			"name"	"tf2cc_merc_gib"
+			"item_name"	"G.I.B."
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_rocketlauncher"
+			"item_slot"	"primary"
+			"anim_slot"	"PRIMARY"
+			"bucket"	"0"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/of/weapons/v_models/v_bfg_ca644197.mdl"
+			"model_world"	"models/tf2cc/of/weapons/w_models/w_bfg.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"damage bonus"
+				{
+					"attribute_class"	"mult_dmg"
+					"value"	"1.55"
+				}
+				"fire rate bonus"
+				{
+					"attribute_class"	"mult_postfiredelay"
+					"value"	"1.25"
+				}
+				"Projectile speed increased"
+				{
+					"attribute_class"	"mult_projectile_speed"
+					"value"	"0.5"
+				}
+				"clip size penalty"
+				{
+					"attribute_class"	"mult_clipsize"
+					"value"	"0.25"
+				}
+				"hidden primary max ammo bonus"
+				{
+					"attribute_class"	"mult_maxammo_primary"
+					"value"	"0.4"
+				}
+				"Reload time increased"
+				{
+					"attribute_class"	"mult_reload_time"
+					"value"	"1.11"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_single_shot"	"tf2cc.Weapon_MLG.Single"
+				"sound_burst"	"tf2cc.Weapon_MLG.SingleCrit"
+				"animation_replacement"
+				{
+					"ACT_MP_AIRWALK_PRIMARY"	"ACT_DOD_CROUCHWALK_AIM_GREN_STICK"
+					"ACT_MP_ATTACK_CROUCH_PRIMARY"	"ACT_DOD_CROUCHWALK_IDLE_PISTOL"
+					"ACT_MP_ATTACK_STAND_PRIMARY"	"ACT_DOD_CROUCH_AIM_MP44"
+					"ACT_MP_ATTACK_SWIM_PRIMARY"	"ACT_DOD_CROUCH_ZOOM_BOLT"
+					"ACT_MP_CROUCHWALK_PRIMARY"	"ACT_DOD_PRIMARYATTACK_30CAL"
+					"ACT_MP_CROUCH_PRIMARY"	"ACT_DOD_PRIMARYATTACK_PRONE_30CAL"
+					"ACT_MP_JUMP_FLOAT_PRIMARY"	"ACT_DOD_PRONEWALK_IDLE_MG"
+					"ACT_MP_JUMP_LAND_PRIMARY"	"ACT_DOD_PRONE_AIM_RIFLE"
+					"ACT_MP_JUMP_START_PRIMARY"	"ACT_DOD_RELOAD_CROUCH"
+					"ACT_MP_RUN_PRIMARY"	"ACT_DOD_SECONDARYATTACK_MP40"
+					"ACT_MP_STAND_PRIMARY"	"ACT_DOD_SPRINT_IDLE_PSCHRECK"
+					"ACT_MP_SWIM_PRIMARY"	"ACT_DOD_STAND_IDLE"
+				}
+			}
+			"image_inventory"	"tf2cc/of/bucket/bucket_gib"
+		}
+		"30150"
+		{
+			"name"	"tf2cc_merc_machinegun"
+			"item_name"	"Machine Gun"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_smg"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/marxvee/weapons/customclasses/v_models/v_machinegun_merc.mdl"
+			"model_world"	"models/tf2cc/marxvee/weapons/customclasses/w_models/w_machinegun_merc.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+				"mod max primary clip override"
+				{
+					"attribute_class"	"mod_max_primary_clip_override"
+					"value"	"40"
+				}
+				"hidden secondary max ammo penalty"
+				{
+					"attribute_class"	"mult_maxammo_secondary"
+					"value"	"1.6"
+				}
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+		}
+		"30151"
+		{
+			"name"	"tf2cc_merc_medkit"
+			"item_name"	"Medkit"
+			"item_type_name"	"Mercenary Weapon"
+			"item_quality"	"normal"
+			"propername"	"0"
+			"item_class"	"tf_weapon_laser_pointer"
+			"item_slot"	"secondary"
+			"anim_slot"	"SECONDARY"
+			"bucket"	"1"
+			"hidden"	"1"
+			"tags"
+			{
+				"bots_cant_use"	"1"
+			}
+			"model_player"	"models/tf2cc/marxvee/weapons/customclasses/v_models/v_classic_medkit.mdl"
+			"model_world"	"models/tf2cc/marxvee/weapons/customclasses/w_models/w_classic_medkit.mdl"
+			"attach_to_hands"	"2"
+			"attributes"
+			{
+				"hidden separator"	"1"
+			}
+			"static_attrs"
+			{
+				"custom hand viewmodel"	"models/weapons/c_models/c_merc_arms.mdl"
+			}
+			"visuals"
+			{
+				"sound_melee_miss"	"tf2cc.Silent"
+				"sound_melee_hit"	"tf2cc.Silent"
+				"sound_melee_hit_world"	"tf2cc.Silent"
+				"sound_burst"	"tf2cc.Silent"
+				"sound_single_shot"	"tf2cc.Silent"
+			}
+		}
+	}
+}
