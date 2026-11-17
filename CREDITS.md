@@ -19,6 +19,7 @@ Maxxy and concepted by Blaholtzen, and some viewmodel animations were done by He
 | Voice of Civilian | Benjamoose |
 | Modeller (Mercenary) | Maxxy |
 | Concept Artist (Mercenary) | Blaholtzen |
+| Modeller (weapons) | svdl |
 
 ## Open Fortress Team
 
