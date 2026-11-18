@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "tf2cc/oldmerc/bucket_team/bucket_syringe_d6553fda_blue"
+	"$translucent" "1"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$ignorez" "1"
+}

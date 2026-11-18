@@ -254,6 +254,41 @@
 	"volume"	"1.0"
 	"wave"	"tf2cc/of/weapons/berserk_swing_crit1.wav"
 }
+"tf2cc.Weapon_Bouncer.DrumClose"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1"
+	"wave"	"tf2cc/of/weapons/bouncer_drum_close.wav"
+}
+"tf2cc.Weapon_Bouncer.DrumLoad"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1"
+	"wave"	"tf2cc/of/weapons/bouncer_reload.wav"
+}
+"tf2cc.Weapon_Bouncer.DrumOpen"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1"
+	"wave"	"tf2cc/of/weapons/bouncer_drum_open.wav"
+}
+"tf2cc.Weapon_Bouncer.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"	")tf2cc/of/weapons/bouncer_shoot.wav"
+}
+"tf2cc.Weapon_Bouncer.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"	")tf2cc/of/weapons/bouncer_shoot_crit.wav"
+}
 "tf2cc.Weapon_Classic_Knife.Draw"
 {
 	"channel"	"CHAN_AUTO"
@@ -407,6 +442,13 @@
 	"soundlevel"	"SNDLVL_94dB"
 	"volume"	"1.0"
 	"wave"	")tf2cc/of/weapons/chaingun_windup.wav"
+}
+"tf2cc.Weapon_GHook.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"1"
+	"wave"	")weapons/crusaders_crossbow_shoot.wav"
 }
 "tf2cc.Weapon_GrenadeLauncher.Draw"
 {
@@ -699,6 +741,34 @@
 	"volume"	".5"
 	"wave"	"tf2cc/of/weapons/pistol_worldreload_merc.wav"
 }
+"tf2cc.Weapon_Quad.Ping"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_95dB"
+	"volume"	"1"
+	"pitch"	"PITCH_NORM"
+	"wave"	")ui/cyoa_ping_available.wav"
+}
+"tf2cc.Weapon_QuadRPG.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1"
+	"soundlevel"	"SNDLVL_94dB"
+	"wave"	")tf2cc/of/weapons/rocket_quad_shoot.wav"
+}
+"tf2cc.Weapon_QuadRPG.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1"
+	"wave"	")tf2cc/of/weapons/rocket_quad_shoot_crit.wav"
+}
+"tf2cc.Weapon_QuadRPG.WorldReload"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"1"
+	"wave"	"weapons/rocket_reload.wav"
+}
 "tf2cc.Weapon_QuakeRPG.Single"
 {
 	"channel"	"CHAN_WEAPON"
@@ -810,6 +880,51 @@
 	"soundlevel"	"SNDLVL_74dB"
 	"volume"	"1"
 	"wave"	"weapons/rocket_reload.wav"
+}
+"tf2cc.Weapon_SawBallista.Cock_Back"
+{
+	"channel"	"CHAN_ITEM"
+	"volume"	"0.85"
+	"pitch"	"96,100"
+	"soundlevel"	"SNDLVL_74dB"
+	"wave"	"tf2cc/of/weapons/sawballista_cock_back.wav"
+}
+"tf2cc.Weapon_SawBallista.Cock_Forward"
+{
+	"channel"	"CHAN_ITEM"
+	"volume"	"0.85"
+	"pitch"	"96,100"
+	"soundlevel"	"SNDLVL_74dB"
+	"wave"	"tf2cc/of/weapons/sawballista_cock_forward.wav"
+}
+"tf2cc.Weapon_SawBallista.Draw"
+{
+	"channel"	"CHAN_ITEM"
+	"volume"	"0.85"
+	"pitch"	"96,100"
+	"soundlevel"	"SNDLVL_74dB"
+	"wave"	"weapons/draw_minigun_heavy.wav"
+}
+"tf2cc.Weapon_SawBallista.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1"
+	"soundlevel"	"SNDLVL_94dB"
+	"wave"	")tf2cc/of/weapons/sawballista_shoot.wav"
+}
+"tf2cc.Weapon_SawBallista.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1"
+	"wave"	")tf2cc/of/weapons/sawballista_shoot_crit.wav"
+}
+"tf2cc.Weapon_SawBallista.WorldReload"
+{
+	"channel"	"CHAN_ITEM"
+	"volume"	"0.85"
+	"pitch"	"96,100"
+	"soundlevel"	"SNDLVL_74dB"
+	"wave"	"tf2cc/of/weapons/sawballista_world_reload.wav"
 }
 "tf2cc.Weapon_Scatter_Gun.Draw"
 {
@@ -1069,4 +1184,418 @@
 		"wave"	"weapons/metal_hit_hand2.wav"
 		"wave"	"weapons/metal_hit_hand3.wav"
 	}
+}
+
+// tf2cc: old TF2 Classic Merc weapon sounds (research/tf2c-oldmerc, gen_oldmerc.py)
+"tf2cc.oldmerc.Weapon_Chainsaw.HitFlesh"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod2.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod3.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Chainsaw.HitWorld"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hit1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hit2.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Chainsaw_loop"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/chainsaw_loop.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Chainsaw_start"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/chainsaw_start.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Chainsaw_swing"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/chainsaw_swing.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Chainsaw_swingCrit"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/chainsaw_swingcrit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Crowbar.HitFlesh"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod2.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hitbod3.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Crowbar.HitWorld"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hit1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/cbar_hit2.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Crowbar.Miss"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/cbar_miss1.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Crowbar.MissCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/cbar_miss1_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Grenade_Normal.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"volume"	"1.0"
+	"soundlevel"	"SNDLVL_95dB"
+	"wave"		"weapons/grenade_throw.wav"
+}
+
+"tf2cc.oldmerc.Weapon_HeavyArtillery.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/artillery_shoot.wav"
+}
+
+"tf2cc.oldmerc.Weapon_HeavyArtillery.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/artillery_shoot_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Pipe.HitFlesh"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/pipe_hit_body1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/pipe_hit_body2.wav"
+		"wave"		"tf2cc/oldmerc/weapons/pipe_hit_body3.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Pipe.HitWorld"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"		"tf2cc/oldmerc/weapons/pipe_hit_world1.wav"
+		"wave"		"tf2cc/oldmerc/weapons/pipe_hit_world2.wav"
+	}
+}
+
+"tf2cc.oldmerc.Weapon_Pipe.Miss"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_64dB"
+	"volume"	".6"
+	"wave"		")tf2cc/oldmerc/weapons/cbar_miss1.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Pipe.MissCrit"
+{
+    "channel"    "CHAN_WEAPON"
+    "soundlevel"    "SNDLVL_64dB"
+    "volume"    ".6"
+    "wave"        ")tf2cc/oldmerc/weapons/cbar_miss1_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_ShotgunMerc.Draw"
+{
+	"channel"	"CHAN_AUTO"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	".5"
+	"wave"		"tf2cc/oldmerc/weapons/draw_shotgun_merc.wav"
+}
+
+"tf2cc.oldmerc.Weapon_SixShooter.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/six_shooter_shoot.wav"
+}
+
+"tf2cc.oldmerc.Weapon_SixShooter.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/six_shooter_shoot_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Sten.BoltPull"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/draw_sten_bolt_pull.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Sten.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/sten_shoot.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Sten.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/sten_shoot_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_SuperShotgun.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/supershotgun_shoot.wav"
+}
+
+"tf2cc.oldmerc.Weapon_SuperShotgun.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/supershotgun_shoot_crit.wav"
+}
+
+"tf2cc.oldmerc.Weapon_SuperShotgun.WorldReload"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"tf2cc/oldmerc/weapons/supershotgun_shells_in.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Tommmygun.BoltBack"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"tf2cc/oldmerc/weapons/tommy_bolt_backward.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Tommmygun.DrumIn"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"tf2cc/oldmerc/weapons/tommy_drum_in.wav"
+}
+
+"tf2cc.oldmerc.Weapon_Tommmygun.DrumOut"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"tf2cc/oldmerc/weapons/tommy_drum_out.wav"
+}
+
+"tf2cc.oldmerc.Weapon_TommyGun.WorldReload"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldmerc/weapons/artillery_shoot.wav"
+}
+
+// tf2cc: old TF2 Classic class weapon sounds (research/tf2c-oldclass, gen_oldclass.py)
+"tf2cc.oldclass.Weapon_BetaRPG.WorldReload"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"1"
+	"wave"		"weapons/rocket_reload.wav"
+}
+
+"tf2cc.oldclass.Weapon_Cyclops.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/grenade_cyclops_shoot.wav"
+}
+
+"tf2cc.oldclass.Weapon_Cyclops.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/grenade_cyclops_shoot_crit.wav"
+}
+
+"tf2cc.oldclass.Weapon_Cyclops.WorldReload"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"weapons/grenade_launcher_worldreload.wav"
+}
+
+"tf2cc.oldclass.Weapon_HuntingRifle.Draw"
+{
+	"channel"	"CHAN_STATIC"
+	"volume"	"0.7"
+	"soundlevel"	"SNDLVL_NORM"
+
+	"wave"		"tf2cc/oldclass/weapons/poapri_draw01.wav"
+}
+
+"tf2cc.oldclass.Weapon_HuntingRifle.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/poapri_shoot.wav"
+}
+
+"tf2cc.oldclass.Weapon_HuntingRifle.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")weapons/POAPRI_Shoot_Crit.wav"
+}
+
+"tf2cc.oldclass.Weapon_Sten.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/sten_shoot.wav"
+}
+
+"tf2cc.oldclass.Weapon_Sten.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/sten_shoot_crit.wav"
+}
+
+"tf2cc.oldclass.Weapon_SuperShotgun.Single"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/supershotgun_shoot.wav"
+}
+
+"tf2cc.oldclass.Weapon_SuperShotgun.SingleCrit"
+{
+	"channel"	"CHAN_WEAPON"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"		")tf2cc/oldclass/weapons/supershotgun_shoot_crit.wav"
+}
+
+"tf2cc.oldclass.Weapon_SuperShotgun.WorldReload"
+{
+	"channel"	"CHAN_ITEM"
+	"soundlevel"	"SNDLVL_NORM"
+	"volume"	"1.0"
+	"wave"		"tf2cc/oldclass/weapons/supershotgun_shells_in.wav"
+}
+
+"DemoCharge.Charging"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"	"common/null.wav"
+}
+"DemoCharge.ChargeCritOn"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	"common/null.wav"
+}
+"DemoCharge.ChargeCritOff"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	"common/null.wav"
+}
+"tf2cc.DemoCharge.Charging"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"	"weapons/demo_charge_windup1.wav"
+		"wave"	"weapons/demo_charge_windup2.wav"
+		"wave"	"weapons/demo_charge_windup3.wav"
+	}
+}
+"tf2cc.DemoCharge.ChargeCritOn"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	")weapons/weapon_crit_charged_on.wav"
+}
+"tf2cc.DemoCharge.ChargeCritOff"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	")weapons/weapon_crit_charged_off.wav"
 }

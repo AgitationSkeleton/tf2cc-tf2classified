@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "tf2cc/oldmerc/bucket/bucket_coffeepot_b4v2_116942a7"
+	"$translucent" "1"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$ignorez" "1"
+}

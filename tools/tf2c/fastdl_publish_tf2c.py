@@ -15,7 +15,8 @@ Safety (user rules for redchanitfastdl_tf2classic, used by the live April Fools 
     tool made (only while it is still the branch head);
   * each publish is logged to deploy/fastdl_publish_log.tsv.
 
-  python -I tools/tf2c/fastdl_publish_tf2c.py [--apply]
+  python -I tools/tf2c/fastdl_publish_tf2c.py [--apply] [--with-schema]   (shared schema files only with
+  --with-schema: on the live server CustomSlop publishes the merged schema)
   python -I tools/tf2c/fastdl_publish_tf2c.py --revert <commit_sha> --apply
 """
 import base64
@@ -32,7 +33,7 @@ REPO = "AgitationSkeleton/redchanitfastdl_tf2classic"
 PREFIX = "tf2classified/"
 STAGE = os.path.join(ROOT, "tf2c", "staging", "tf2classified")
 REPLACE = {"scripts/items/custom_items_game.txt",
-           "scripts/items/custom_level_sounds.txt"}   # tf2cc-generated: only tf2cc.* sound scripts
+           "scripts/items/custom_level_sounds.txt"}   # tf2cc-generated: tf2cc.* sound scripts plus the stock DemoCharge.* overrides (gen_schema DEMO_CHARGE_SOUNDS)
 # Paths only tf2cc ships (published by this tool): updated in place when their content changes.
 OWN_PREFIXES = ("models/player/tf2cc/", "models/tf2cc/", "sound/tf2cc/", "sound/vo/tf2cc/",
                 "materials/tf2cc/", "materials/models/tf2cc/", "materials/vgui/tf2cc/")
@@ -80,6 +81,10 @@ def main():
         for n in names:
             rel = os.path.relpath(os.path.join(dp, n), STAGE).replace(os.sep, "/")
             if rel.endswith(SKIP_EXT):
+                continue
+            # The shared item schema/sound scripts on FastDL are CustomSlop's merged copy (its
+            # publish.py sends them): replacing them with tf2cc's would drop its items.
+            if rel in REPLACE and "--with-schema" not in sys.argv:
                 continue
             dst = PREFIX + rel + ".bz2"
             if dst.lower() in existing:

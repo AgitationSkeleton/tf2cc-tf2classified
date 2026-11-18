@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "tf2cc/of/bucket_team/bucket_berserk_1a05e3bd_red"
+	"$translucent" "1"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$ignorez" "1"
+}

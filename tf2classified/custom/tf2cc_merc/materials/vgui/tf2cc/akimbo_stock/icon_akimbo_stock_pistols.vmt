@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "tf2cc/akimbo_stock/icon_akimbo_stock_pistols"
+	"$translucent" "1"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$ignorez" "1"
+}

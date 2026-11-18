@@ -47,6 +47,8 @@ import os
 import re
 import shutil
 import struct
+
+import numpy as np
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +81,12 @@ WEAPONS_CFG = os.path.join(ROOT, "config", "sourcemod", "configs", "tf2cc", "wea
 # assault rifle: 3 shots 0.07 s apart, BurstFireDelay 0.30 -> fire delay 0.30, x = 0.07/0.30.
 # Native and client-predicted (a plugin writing m_flNextPrimaryAttack makes the viewmodel flicker).
 STRING_ATTRS = {"merc_dynamite": {"custom projectile model": MODEL_PREFIX + "weapons/w_models/w_dynamite.mdl"},
+                # OF Quad: BurstSize 4, shots 0.1 s apart (TimeFireDelay), BurstFireDelay 0.5 after the
+                # burst: fire delay 0.5 (EXTRA_ATTRS) and x = 0.1 / 0.5.
+                "merc_quad": {"mod burstfire": "4 0.2",
+                              "custom projectile model": MODEL_PREFIX + "weapons/w_models/w_quad_rocket.mdl"},
+                "merc_bouncer": {"custom projectile model": MODEL_PREFIX + "weapons/w_models/w_grenade_bouncer.mdl"},
+                "merc_sawballista": {"custom projectile model": MODEL_PREFIX + "weapons/w_models/w_saw_ballista_projectile.mdl"},
                 "merc_assaultrifle": {"mod burstfire": "3 0.2333"}}
 # Extra numeric attributes (class, value) where OF behaviour has no WeaponData counterpart:
 #  railgun: OF has no clip (14 shots, 1.5 s apart); on the revolver base the clip holds them all.
@@ -96,9 +104,18 @@ STRING_ATTRS = {"merc_dynamite": {"custom projectile model": MODEL_PREFIX + "wea
 # mult_reload_time and sets the viewmodel playback rate to match, so the OF reload is seen in
 # full within 1.4 s.
 EXTRA_ATTRS = {
-    "merc_lightning": [("set_weapon_range", 720), ("mult_spread_scale", 0.01)],
+    # The clip-less primaries on secondary-ammo bases (SMG, revolver) fired from the pistol's
+    # reserve (TF_AMMO_SECONDARY, shared; the railgun's entry is below): "mod use custom ammo type" 1 = TF_AMMO_PRIMARY, their own
+    # pool (user 2026-11-16: the lightning gun "occupies both primary and secondary slots").
+    "merc_lightning": [("set_weapon_range", 720), ("mult_spread_scale", 0.01 * 0.02 / 0.0675), ("mod_use_custom_ammo_type", 1)],   # spread 0.0002 as on the SMG
     "merc_supershotgun": [("mult_reload_time", 1.4 / (0.33 + 134 / 60.0)), ("mod_max_primary_clip_override", 1)],
-    "merc_assaultrifle": [("mult_postfiredelay", 0.30 / 0.1)],
+    # Eternal Shotgun: OF's super shotgun numbers and the same clip-1 reload (its es_reload is the
+    # same 135-frame sequence as db_reload); the meat hook (alt-fire) is tf2cc_hook.
+    "merc_eternalshotgun": [("mult_reload_time", 1.4 / (0.33 + 134 / 60.0)), ("mod_max_primary_clip_override", 1)],
+    # (primaries on a secondary weapon class, tf_weapon_smg / tf_weapon_revolver, could not be switched
+    # away from to the secondary on the client: they now use tf_weapon_shotgun_primary, user 2026-11-17;
+    # "scattergun no reload single" = one magazine reload; values are relative to its script)
+    "merc_assaultrifle": [("mult_postfiredelay", 0.30 / 0.625), ("set_scattergun_no_reload_single", 1, "scattergun no reload single")],
     # GIB: the stock-TF2 tf2cc numbers (config/sourcemod/configs/tf2cc/weapons.cfg merc_gib on
     # the TF2 rocket launcher: damage bonus 1.55, fire rate penalty 1.25, projectile speed 0.5,
     # clip 4 x 0.25 = 1, reserve 8), not OF's. TF2's launcher script reloads one rocket in
@@ -114,15 +131,78 @@ EXTRA_ATTRS = {
     # CalcIsAttackCriticalHelper and ...NoCrits with "backstab only"; server.dll vtable
     # +0xe00/+0xe08). The melee helper multiplies its chance by mult_crit_chance.
     "merc_knife": [("mult_crit_chance", 0)],
+    # Railgun: OF's CTFRailgun is a CTFSniperRifle that headshots unscoped (OF server.dll:
+    # of_headshot_disable_railgun "Disables railgun headshots", default off). TF2C's revolver
+    # base headshots with "can headshot" (as TF2C's own hunting revolver).
+    # "revolver use hit locations" (set_weapon_mode 1, the Ambassador's) makes the revolver's
+    # CanFireCriticalShot accept a headshot; "can headshot" sets the hit-location damage flag.
+    # headshots: the revolver class's hit locations are emulated by tf2cc_tf2c (RailgunHeadshot);
+    # range 4096 as the revolver script had
+    # Batch 16 (user 2026-11-17: "cant scope and i think is only doing 60 dmg on bodyshot, iirc OF's
+    # is 80 or 90"): on the Engineer shotgun class the 80 had the bullet falloff/ramp-up (measured
+    # 117 at 128 u, 80 at 512 u, 52 at 768 u, 43 at 900 u); OF's railgun deals a flat 80
+    # (TF_WEAPON_RAILGUN damage type DMG_BULLET | DMG_USE_HITLOCATIONS, no distance mod). OF's
+    # railgun is a CTFSniperRifle: right-click zooms (FOV 20, scope, rezoom after a shot) and creates
+    # the sniper dot; it never charges ("NoSniperCharge" 1) and does not slow the Merc
+    # (TF_COND_AIMING_SCOPE_ONLY, not TF_COND_AIMING). 5205's sniper rifle class does all of that
+    # natively: no falloff, the zoom; "SRifle Charge rate decreased" 0 = no charge; "aiming movespeed
+    # increased" 4 lifts the aiming cap back to the Merc's 320 (measured 320 zoomed); OF zooms in the
+    # air. The class's own damage is 50 (its script's "Damage" is not used: measured 80 with x1.6).
+    # Kept from the live item: range 4096, the reserve (14, "mod use custom ammo type" 1 = primary,
+    # as the class), the plugin's headshots and rail. (Its spread was 0.02; OF's and the sniper
+    # rifle's is 0.)
+    "merc_railgun": [("mult_dmg", 80 / 50.0, "damage bonus"), ("set_weapon_range", 4096), ("mod_use_custom_ammo_type", 1),
+                     ("mult_sniper_charge_per_sec", 0, "SRifle Charge rate decreased"),
+                     ("mod_sniper_zoom_while_jumping", 1, "mod sniper zoom while jumping"),
+                     ("mult_player_aiming_movespeed", 4, "aiming movespeed increased")],
     # Chainsaw: as the stock-TF2 tf2cc chainsaw, the base melee only drives the looping swing
     # (0.8 s x 0.75 = the 0.6 s cs_rev_idle loop, no damage); the plugin deals OF's 12 dmg every
     # 0.05 s, the wind-up/wind-down, the sounds and the alt-fire charge. "full charge turn
     # control" 50 is the Tide Turner's (TF2C reads charge_turn_control on server and client).
     "merc_chainsaw": [("mult_dmg", 0), ("mult_postfiredelay", 0.75), ("charge_turn_control", 50)],
+    # OF explosives (docs/tf2classified/OF_EXPLOSIVES.md; the rest is src/tf2c/tf2cc_ofexpl.sp).
+    # OF radii on TF2C's 146 grenade and the dynamite's OF 900 u/s (TF2C launcher 1200; the plugin
+    # adds the charge-up); China Lake projectile_pipe_dm does not spin. OF ExplodeOnImpact is the
+    # plugin's (tf2cc_dynamite_impact: detonates from OnGameFrame once m_bTouched is set). Not the
+    # native "sticky detonate mode" 3: no stock 5205 item uses it, and it changed the pipe inside
+    # the VPhysics collision callback ("Changing collision rules within a callback" warnings).
+    "merc_dynamite": [("mult_explosion_radius", 124 / 146.0, "Blast radius decreased"),
+                      ("mult_projectile_speed", 900 / 1200.0, "Projectile speed decreased")],
+    "merc_chinalake": [("mult_explosion_radius", 110 / 146.0, "Blast radius decreased"), ("grenade_no_spin", 1)],
+    # Saw Ballista (approved 2026-11-17): fire 0.4, clip 1, 1.2 s reload (TF2C launcher: 0.5 start +
+    # 0.34 per rocket, x mult_reload_time), reserve 10, 1100 u/s; damage is the plugin's (4 per 0.03 s).
+    "merc_sawballista": [("mult_reload_time", 1.2 / (0.5 + 0.34))],
+    # OF Quad Launcher (tf_weapon_super_rocketlauncher): fire delay 0.5 between bursts (the burst is
+    # "mod burstfire" in STRING_ATTRS), radius 100 (the plugin adds OF's +25 per rocket since the
+    # reload), whole-clip reload 2.667 s x the item's "reload time multiplier" 1.44 = 3.84 s. TF2C's
+    # launcher reloads 0.5 s start + 0.34 s per rocket (x mult_reload_time, measured for the GIB):
+    # 3.84 / (0.5 + 4 x 0.34) = 2.06 for a full clip.
+    "merc_quad": [("mult_postfiredelay", 0.5 / 0.8), ("mult_explosion_radius", 100 / 146.0, "Blast radius decreased"),
+                  ("mult_reload_time", 3.84 / (0.5 + 4 * 0.34))],
+    # OF Bouncer (tf_weapon_bouncer = CTFBouncer : CTFRocketLauncher, projectile_bouncyrocket): a rocket
+    # with gravity 1.5 (MOVETYPE_FLYGRAVITY, as "rocket gravity" does natively), fired 750 u/s pitched
+    # 15 deg up (forward 724 + up 194: TF2C adds 100 + "rocket gravity upward force" up), a 2 s fuse
+    # ("rocket limited lifetime": DetonateThink, full damage), no distance falloff, radius 109.5;
+    # reload 0.6 s per grenade (4 = 2.4 s = (0.5 + 4 x 0.34) x 1.29). The bounce (elasticity 0.9, no
+    # bounce below 200 u/s) is tf2cc_ofrockets.
+    "merc_bouncer": [("mult_explosion_radius", 109.5 / 146.0, "Blast radius decreased"),
+                     ("mult_projectile_speed", 750 / 1100.0, "Projectile speed decreased"),
+                     ("mod_rocket_gravity", 1.5, "rocket gravity"),
+                     ("mod_rocket_gravity_upward_force", 94, "rocket gravity upward force"),
+                     ("rocket_lifetime", 2.0, "rocket limited lifetime"),
+                     ("mod_no_dmg_falloff", 1, "no damage falloff over distance"),
+                     ("mult_reload_time", 2.4 / (0.5 + 4 * 0.34))],
 }
+# LAN test only: TF2C 5205's unused "set rocket detonate mode" (5245; schema comment "2 = Bouncy
+# Rockets (explodes after 5 bounces)") on the Bouncer, to compare with the plugin bounce. Never shipped.
+if os.environ.get("TF2CC_TEST_ROCKET_DETONATE_MODE"):
+    EXTRA_ATTRS["merc_bouncer"].append(("set_rocket_detonate_mode", int(os.environ["TF2CC_TEST_ROCKET_DETONATE_MODE"]),
+                                        "set rocket detonate mode"))
 # Item tracers (TF2C appends _<team>[_crit]; these families exist for all four teams).
 TRACERS = {"merc_railgun": "tracer_sniper_rifle_PARENT", "merc_lightning": "bullet_bignasty_tracer01"}
-EXTRA_MODELS = []
+# Projectile models set by "custom projectile model" (STRING_ATTRS).
+EXTRA_MODELS = ["models/weapons/w_models/w_quad_rocket.mdl", "models/weapons/w_models/w_grenade_bouncer.mdl",
+                "models/weapons/w_models/w_saw_ballista_projectile.mdl"]
 # Weapons whose OF fire sound is a stream played by the plugin (start/loop/end), not per shot.
 SILENT_SHOT = {"merc_lightning"}
 # Weapons whose every weapon sound is played by the plugin (looping states, not per swing): all
@@ -139,7 +219,16 @@ BOMBLET_MAT_DIR = "models/tf2cc/of/bomblet"
 # middle of a square texture). OF's bucket sprites are 256x128, so they are padded to 256x256
 # under a tf2cc path. OF weapons without a backpack_icon use these sprites:
 BUCKET_FALLBACK = {"merc_knife": "bucket_classic_knife", "merc_fists": "bucket_berserk",
-                   "merc_smg": "bucket_smgDM", "merc_gib": "bucket_gib"}
+                   "merc_smg": "bucket_smgDM", "merc_gib": "bucket_gib", "merc_quad": "bucket_quadlauncher",
+                   "merc_eternalshotgun": "bucket_supershotgun_doom",
+                   # MarxVee items ship no icon art: OF's classic medkit sprites (RED/BLU, the
+                   # medkit model is team-coloured) and a render of the machine gun's world model
+                   # (research/marxvee-icons, OF bucket framing: 256x128 DXT5, muzzle left)
+                   "merc_medkit": "bucket_classic_medkit", "merc_machinegun": "bucket_machinegun_v2"}
+# Bucket sprites that are not OF files (name -> 256x128 DXT5 VTF in the repo)
+ICON_FILES = {"bucket_machinegun": os.path.join(ROOT, "research", "marxvee-icons", "bucket_machinegun.vtf"),
+              # CustomSlop v2 renderer (tools/tf2c/render_old_icons.py); a new name = a new FastDL path
+              "bucket_machinegun_v2": os.path.join(ROOT, "research", "tf2cc-icons", "bucket_machinegun_v2.vtf")}
 BUCKET_DIR = "tf2cc/of/bucket"
 # Icons with team variants live apart: the item panel lookup (client.dll 0x3d8730) asks the
 # material system for "<image>_large" first, then "<image>_<team>", then "<image>", and takes the
@@ -148,16 +237,39 @@ BUCKET_DIR = "tf2cc/of/bucket"
 # that _large.vmt cached, hence a new folder with no _large but <image>_<team>.vmt materials.
 TEAM_BUCKET_DIR = "tf2cc/of/bucket_team"
 # Sounds the plugin plays (taunts), copied under the tf2cc prefix.
-EXTRA_SOUNDS = {"player/taunt_bond_pistol.wav": SOUND_PREFIX + "player/taunt_bond_pistol.wav"}
+EXTRA_SOUNDS = {"player/taunt_bond_pistol.wav": SOUND_PREFIX + "player/taunt_bond_pistol.wav",
+                # Bouncer ricochet (OF BouncerGrenade.ImpactHard/Soft), played by tf2cc_ofrockets
+                "weapons/custom/bouncer_nade_impact.wav": SOUND_PREFIX + "weapons/bouncer_nade_impact.wav"}
 SKIP_STATS = {"merc_fists": {"*"}, "merc_nailgun": {"Spread"}, "merc_assaultrifle": {"TimeFireDelay"},
               "merc_supershotgun": {"TimeReload", "clip_size"}, "merc_gib": {"*"},
-              "merc_chainsaw": {"*"}}
+              "merc_eternalshotgun": {"TimeReload", "clip_size"},
+              "merc_railgun": {"Damage"},     # the sniper rifle's script Damage (4) is not its damage (50)
+              "merc_chainsaw": {"*"},
+              # Quad: fire delay / reload set in EXTRA_ATTRS (burst and whole-clip reload models differ).
+              "merc_quad": {"TimeFireDelay", "TimeReload"}, "merc_bouncer": {"TimeReload"},
+              "merc_sawballista": {"TimeReload", "Damage"}}
+# OF weapons without a weapon script in OF's items_game (WeaponData written here).
+SYNTH_WEAPONS = {
+    # The Saw Ballista's class, models, sounds and sprite ship in OF but no script does: the stats are
+    # the ones the user approved (2026-11-17). The blade (4 dmg / 0.03 s, ricochets, sticking) is tf2cc_saw.
+    "tf_weapon_ripper": '''"tf_weapon_ripper" { "backpack_icon" "../sprites/bucket_saw_ballista" "WeaponData" {
+        "printname" "#TF_Weapon_SawBallista" "WeaponType" "primary" "Damage" "90" "TimeFireDelay" "0.4"
+        "TimeReload" "1.2" "ProjectileType" "projectile_sawblade" "ProjectileSpeed" "1100"
+        "ProjectileModel" "models/weapons/w_models/w_saw_ballista_projectile.mdl"
+        "clip_size" "1" "default_clip" "1" "MaxAmmo" "10"
+        "viewmodel" "models/weapons/v_models/v_saw_ballista.mdl" "playermodel" "models/weapons/w_models/w_saw_ballista.mdl"
+        "anim_prefix" "gl" "MinViewmodelOffset_X" "10" "MinViewmodelOffset_Y" "0" "MinViewmodelOffset_Z" "-10"
+        "SoundData" { "single_shot" "Weapon_SawBallista.Single" "burst" "Weapon_SawBallista.SingleCrit"
+            "reload" "Weapon_SawBallista.WorldReload" "deploy" "Weapon_SawBallista.Draw" } } }''',
+}
 
 # id, OF weapon key, TF2C item_class, loadout slot, bucket, anim group, OF anim set
 ROSTER = [
     ("merc_crowbar", "tf_weapon_crowbar", "tf_weapon_shovel", "melee", 2, "MELEE", "crowbar"),
     ("merc_leadpipe", "tf_weapon_lead_pipe", "tf_weapon_shovel", "melee", 2, "MELEE", "crowbar"),
-    ("merc_knife", "tf_weapon_combatknife", "tf_weapon_shovel", "melee", 2, "MELEE", "knife"),
+    # OF's CTFCombatKnife derives from CTFKnife (open_fortress/bin/server.dll RTTI; it overrides
+    # only its ID/class/datadesc, so it backstabs like the Spy's knife): TF2C's knife class.
+    ("merc_knife", "tf_weapon_combatknife", "tf_weapon_knife", "melee", 2, "MELEE", "knife"),
     ("merc_fists", "tf_weapon_berserk", "tf_weapon_fists", "melee", 2, "MELEE", "berserk"),
     ("merc_chainsaw", "tf_weapon_chainsaw", "tf_weapon_shovel", "melee", 2, "MELEE", "chainsaw"),
     ("merc_pistol", "tf_weapon_pistol_mercenary", "tf_weapon_pistol", "secondary", 1, "SECONDARY", "pistol"),
@@ -168,14 +280,25 @@ ROSTER = [
     ("merc_tommygun", "tf_weapon_tommygun", "tf_weapon_smg", "secondary", 1, "SECONDARY", "tommygun"),
     ("merc_dynamite", "tf_weapon_dynamite_bundle", "tf_weapon_grenadelauncher", "secondary", 1, "SECONDARY", "dynamite"),
     ("merc_supershotgun", "tf_weapon_supershotgun", "tf_weapon_shotgun_primary", "primary", 0, "PRIMARY", "ssg"),
-    ("merc_assaultrifle", "tf_weapon_assaultrifle", "tf_weapon_smg", "primary", 0, "PRIMARY", "assault_rifle"),
+    ("merc_assaultrifle", "tf_weapon_assaultrifle", "tf_weapon_shotgun_primary", "primary", 0, "PRIMARY", "assault_rifle"),
     ("merc_rocketlauncher", "tf_weapon_rocketlauncher_dm", "tf_weapon_rocketlauncher", "primary", 0, "PRIMARY", "rocketlauncher"),
     ("merc_chinalake", "tf_weapon_grenadelauncher_mercenary", "tf_weapon_grenadelauncher", "primary", 0, "PRIMARY", "chinalake"),
     ("merc_nailgun", "tf_weapon_nailgun", "tf2c_weapon_nailgun", "primary", 0, "PRIMARY", "nailgun"),
     ("merc_gatling", "tf_weapon_gatlinggun", "tf_weapon_minigun", "primary", 0, "PRIMARY", "chaingun"),
-    ("merc_railgun", "tf_weapon_railgun", "tf_weapon_revolver", "primary", 0, "PRIMARY", "railgun"),
-    ("merc_lightning", "tf_weapon_lightning_gun", "tf_weapon_smg", "primary", 0, "PRIMARY", "lightning_gun"),
+    # Railgun on 5205's sniper rifle (batch 16, user 2026-11-17: "cant scope"): OF's CTFRailgun is a
+    # CTFSniperRifle (OF source tf_weapon_sniperrifle.h), so the native class gives OF's zoom.
+    ("merc_railgun", "tf_weapon_railgun", "tf_weapon_sniperrifle", "primary", 0, "PRIMARY", "railgun"),
+    ("merc_lightning", "tf_weapon_lightning_gun", "tf_weapon_shotgun_primary", "primary", 0, "PRIMARY", "lightning_gun"),
     ("merc_gib", "tf_weapon_gib", "tf_weapon_rocketlauncher", "primary", 0, "PRIMARY", "gib"),
+    # Appended 2026-11-17 (ids follow the row: 30121, 30122). OF's Quad and Bouncer have no Merc
+    # animation set of their own (anim_prefix "gl"): the rocket launcher and China Lake sets.
+    ("merc_quad", "tf_weapon_super_rocketlauncher", "tf_weapon_rocketlauncher", "primary", 0, "PRIMARY", "rocketlauncher"),
+    ("merc_bouncer", "tf_weapon_bouncer", "tf_weapon_rocketlauncher", "primary", 0, "PRIMARY", "chinalake"),
+    # 30123: OF's Eternal Shotgun (CTFEternalShotgun : CTFSuperShotgun), on the Super Shotgun's class.
+    ("merc_eternalshotgun", "tf_weapon_eternalshotgun", "tf_weapon_shotgun_primary", "primary", 0, "PRIMARY", "ssg"),
+    # 30124: OF's Saw Ballista (CTFWeaponSawbladeLauncher : CTFRocketLauncher). OF ships no weapon
+    # script for it (SYNTH_WEAPONS below has the user-approved stats); the blade is tf2cc_saw.
+    ("merc_sawballista", "tf_weapon_ripper", "tf_weapon_rocketlauncher", "primary", 0, "PRIMARY", "rocketlauncher"),
 ]
 
 # OF SoundData key -> TF2C weapon sound type (scripts sound_<type>, shareddefs WeaponSound_t)
@@ -392,6 +515,52 @@ def stage_wave(stager, wave):
     return SOUND_PREFIX + rel.lower()
 
 
+# Reload animation speed (batch 16, user 2026-11-17: the assault rifle and akimbo reloads "look
+# really slow"). CTFWeaponBase::SetReloadTimer sets the viewmodel playback rate to
+# 1 / mult_reload_time, so an item whose mult_reload_time is large (a short TF2C script time
+# stretched to the source game's reload) plays its reload animation that much slower than the
+# source game did (measured: assault rifle rate 0.26, Sten 0.40, akimbo 0.39). The reload
+# duration is the script time x mult and stays as it is; the sequence's fps is multiplied by
+# mult instead, so the animation plays at the source game's own speed again (OF: playback 1).
+RELOAD_FPS_ITEMS = ("tf2cc_merc_assaultrifle", "tf2cc_merc_stengun", "tf2cc_merc_akimbo",
+                    "tf2cc_merc_akimbo_stock")
+
+
+def reload_playback_fix(items, report):
+    import mdlanim
+    import srcmodel
+    done = {}
+    for k, it in items.items():
+        if not isinstance(it, kv.KV) or it.get("name") not in RELOAD_FPS_ITEMS:
+            continue
+        mult = None
+        for _, a in (it.get("attributes") or kv.KV()).blocks():
+            if a.get("attribute_class") == "mult_reload_time":
+                mult = float(a.get("value"))
+        rel = it.get("model_player")
+        if not mult or not rel:
+            continue
+        p = os.path.join(STAGE, rel)
+        if p in done:
+            assert abs(done[p] - mult) < 1e-6, "%s shared with a different reload mult" % rel
+            continue
+        done[p] = mult
+        m = srcmodel.load(p)
+        b = bytearray(m.mdl)
+        n = 0
+        for sq in mdlanim.sequences(m):
+            if sq["act"].upper() != "ACT_VM_RELOAD":
+                continue
+            fps = sq["fps"] * mult
+            struct.pack_into("<f", b, sq["anim"] + 8, fps)
+            report.append("  reload fps %s: %s %d frames %g -> %.2f fps (x%g, playback 1/%g)" % (
+                it.get("name"), sq["label"], sq["frames"], sq["fps"], fps, mult, mult))
+            n += 1
+        if not n:
+            report.append("  !! reload fps %s: no ACT_VM_RELOAD sequence in %s" % (it.get("name"), rel))
+        open(p, "wb").write(bytes(b))
+
+
 def fix_viewmodel_sounds(stager, model_rel, scripts, tf2c_scripts, sounds=None):
     """Point AE_CL_PLAYSOUND events at the tf2cc.* copy of OF's script (OF's own sound, defined
     for every client by custom_level_sounds.txt); scripts OF does not define keep TF2C's, and
@@ -435,6 +604,12 @@ def vtf_highres(data):
     for m in range(mips):
         mw, mh = max(1, w >> m), max(1, h >> m)
         size += ((mw + 3) // 4) * ((mh + 3) // 4) * bpb if bpb else mw * mh * bpp
+    frames = struct.unpack_from("<H", data, 24)[0] or 1
+    if frames > 1 and mips == 1:
+        # an animated sprite (OF's bucket_classic_medkit_blue has 3 frames, the last one red):
+        # frame 0, the one the HUD shows first
+        end = len(data) - (frames - 1) * size
+        return w, h, fmt, mips, data[end - size:end]
     return w, h, fmt, mips, data[len(data) - size:]
 
 
@@ -448,6 +623,19 @@ def write_vtf(path, w, h, fmt, flags, mips, payload):
     struct.pack_into("<iBiBBH", hdr, 52, fmt, mips, -1, 0, 0, 1)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "wb").write(bytes(hdr) + payload)
+
+
+def write_icon_vtf(path, w, h, fmt, flags, mips, payload):
+    """An item icon (inventory image) as TF2 Classified ships its own (vgui/loadout/weapons): 512x512
+    DXT5, one mip, CLAMPS|CLAMPT|NOMIP|NOLOD|EIGHTBITALPHA (0x230C). The armory draws the texture at
+    its size with wrapping UVs: the 256x256 icons without clamp flags tiled there (the HUD bucket
+    scaled them right). The square 256 payload (DXT5 or RGBA8888) is upscaled (premultiplied)."""
+    import dxt
+    from PIL import Image
+    rgba = dxt.decode(payload, w, h, fmt)
+    img = Image.fromarray(rgba, "RGBA").convert("RGBa").resize((512, 512), Image.LANCZOS).convert("RGBA")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "wb").write(dxt.icon_vtf(np.asarray(img)))
 
 
 def has_team_icons(wid, icon):
@@ -475,12 +663,18 @@ def stage_bucket_icon(stager, wid, icon):
     name = BUCKET_FALLBACK.get(wid)
     if not name and icon:
         name = icon.replace("\\", "/").split("/")[-1]
-    src = os.path.join(OFG, "materials", "sprites", (name or "") + ".vtf")
+    if wid in ICON_512:
+        return stage_bucket_icon_512(stager, wid, name)
+    src = ICON_FILES.get(name) or os.path.join(OFG, "materials", "sprites", (name or "") + ".vtf")
     if not name or not os.path.exists(src):
         stager.missing.append("bucket icon for %s" % wid)
         return None
     data = open(src, "rb").read()
     w, h, fmt, mips, pix = vtf_highres(data)
+    if mips > 1 and w == 256 and h == 128 and fmt in (0, 15):
+        # OF's bucket_quadlauncher carries mipmaps: keep the full-size level (stored last)
+        pix = pix[-((h // 4) * (w // 4) * 16 if fmt == 15 else h * w * 4):]
+        mips = 1
     if mips != 1 or w != 256 or h != 128 or fmt not in (0, 15):
         stager.missing.append("bucket icon %s: unexpected %dx%d fmt %d mips %d" % (name, w, h, fmt, mips))
         return None
@@ -489,13 +683,47 @@ def stage_bucket_icon(stager, wid, icon):
     flags = struct.unpack_from("<I", data, 20)[0]
     team = has_team_icons(wid, icon)
     rel = "%s/%s" % (TEAM_BUCKET_DIR if team else BUCKET_DIR, name.lower())
-    write_vtf(os.path.join(STAGE, "materials", rel + ".vtf"), w, w, fmt, flags, 1, b"\0" * pad + pix + b"\0" * pad)
+    write_icon_vtf(os.path.join(STAGE, "materials", rel + ".vtf"), w, w, fmt, flags, 1, b"\0" * pad + pix + b"\0" * pad)
     # materials/<image_inventory>[_large].vmt is what the item panels draw (the _large one wins);
     # team icons get no _large so that <image>_<team>.vmt is reached (stage_team_icons).
     write_icon_vmt(stager, rel, rel)
     if not team:
         write_icon_vmt(stager, rel + "_large", rel)
     stager.copied.add(("materials/" + rel + ".vtf").lower())
+    return rel
+
+
+# Items added from 2026-11-17 get the stock armory icon format (512x512 DXT5, clamped; dxt.icon_vtf,
+# as the rendered old-class icons): OF's 256x128 bucket sprite scaled 2x into the middle of 512x512.
+# Older OF items keep their padded 256x256 icons (published paths never change content).
+ICON_512 = {"merc_quad", "merc_bouncer", "merc_eternalshotgun", "merc_sawballista"}
+BUCKET_512_DIR = "tf2cc/of/bucket512"
+
+
+def stage_bucket_icon_512(stager, wid, name):
+    import dxt
+    from PIL import Image
+    src = ICON_FILES.get(name) or os.path.join(OFG, "materials", "sprites", (name or "") + ".vtf")
+    if not name or not os.path.exists(src):
+        stager.missing.append("bucket icon for %s" % wid)
+        return None
+    data = open(src, "rb").read()
+    w, h, fmt, mips, pix = vtf_highres(data)
+    if w != 256 or h != 128 or fmt not in (0, 15):
+        stager.missing.append("bucket icon %s: unexpected %dx%d fmt %d" % (name, w, h, fmt))
+        return None
+    pix = pix[-((h // 4) * (w // 4) * 16 if fmt == 15 else h * w * 4):]     # full-size level (last)
+    rgba = dxt.decode(pix, w, h, fmt)
+    img = Image.fromarray(rgba, "RGBA").convert("RGBa").resize((512, 256), Image.LANCZOS).convert("RGBA")
+    canvas = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+    canvas.paste(img, (0, 128))
+    rel = "%s/%s" % (BUCKET_512_DIR, name.lower())
+    path = os.path.join(STAGE, "materials", rel + ".vtf")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "wb").write(dxt.icon_vtf(np.asarray(canvas)))
+    stager.copied.add(("materials/" + rel + ".vtf").lower())
+    write_icon_vmt(stager, rel, rel)
+    write_icon_vmt(stager, rel + "_large", rel)
     return rel
 
 
@@ -590,6 +818,62 @@ def stage_extra_sounds(stager):
 
 
 SOUNDSCRIPT_REL = "scripts/items/custom_level_sounds.txt"
+
+# The Demoman charge scream and crit stings are played by each CLIENT from the shield-charge conds
+# (17 / 35; client.dll OnAddShieldCharge / OnAddDemoCharge, no class check), so the Merc's chainsaw
+# charge screamed too and no server hook could stop it (tf2cc research notes,
+# chainsaw charge sound). custom_level_sounds.txt overrides stock names on client and
+# server: the stock names play nothing, and tf2cc_tf2c re-emits the tf2cc.* copies (the stock
+# entries of TF2's scripts/game_sounds_weapons.txt as 5205 mounts it) for a charging Demoman only.
+DEMO_CHARGE_SOUNDS = """
+"DemoCharge.Charging"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"wave"	"common/null.wav"
+}
+"DemoCharge.ChargeCritOn"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	"common/null.wav"
+}
+"DemoCharge.ChargeCritOff"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	"common/null.wav"
+}
+"tf2cc.DemoCharge.Charging"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_94dB"
+	"volume"	"1.0"
+	"rndwave"
+	{
+		"wave"	"weapons/demo_charge_windup1.wav"
+		"wave"	"weapons/demo_charge_windup2.wav"
+		"wave"	"weapons/demo_charge_windup3.wav"
+	}
+}
+"tf2cc.DemoCharge.ChargeCritOn"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	")weapons/weapon_crit_charged_on.wav"
+}
+"tf2cc.DemoCharge.ChargeCritOff"
+{
+	"channel"	"CHAN_STATIC"
+	"soundlevel"	"SNDLVL_74dB"
+	"volume"	"0.25"
+	"wave"	")weapons/weapon_crit_charged_off.wav"
+}
+"""
 SOUND_PREFIX_SCRIPT = "tf2cc."
 
 
@@ -680,6 +964,10 @@ class SoundScripts:
 def pad_square(data):
     """256x128 single-mip VTF -> (w, fmt, flags, square payload padded with transparent rows)."""
     w, h, fmt, mips, pix = vtf_highres(data)
+    if mips > 1 and w == 256 and h == 128 and fmt in (0, 15):
+        # OF's bucket_quadlauncher carries mipmaps: keep the full-size level (stored last)
+        pix = pix[-((h // 4) * (w // 4) * 16 if fmt == 15 else h * w * 4):]
+        mips = 1
     if mips != 1 or w != 256 or h != 128 or fmt not in (0, 15):
         return None
     pad = (h // 2 // 4) * (w // 4) * 16 if fmt == 15 else (h // 2) * w * 4
@@ -704,10 +992,154 @@ def stage_team_icons(stager, wid, icon, rel):
              "green": (fmt, flags, vtfcolor.recolor_pixels(rpix, fmt, "green")),
              "yellow": (fmt, flags, vtfcolor.recolor_pixels(rpix, fmt, "yellow"))}
     for team, (f, fl, pix) in teams.items():
-        write_vtf(os.path.join(STAGE, "materials", "%s_%s.vtf" % (rel, team)), w, w, f, fl, 1, pix)
+        write_icon_vtf(os.path.join(STAGE, "materials", "%s_%s.vtf" % (rel, team)), w, w, f, fl, 1, pix)
         stager.copied.add(("materials/%s_%s.vtf" % (rel, team)).lower())
         write_icon_vmt(stager, "%s_%s" % (rel, team), "%s_%s" % (rel, team))
     return True
+
+
+# Old TF2 Classic Merc items use the old builds' own HUD bucket sprites (the sprites named by the
+# old weapon scripts' TextureData "weapon"/"weapon_s"), not the OF ones of the item they copy.
+# Same layout as the OF icons (256x128 DXT5 padded to a 256x256 single-mip texture) under their
+# own folders, so no published OF icon path changes. b2 and b4 ship identical sprites.
+OLD_SPRITES = r"<WORKDIR>/old tf2c versions/TF2C_2_0_0b4/tf2classic/materials/sprites"
+OLDMERC_BUCKET_DIR = "tf2cc/oldmerc/bucket"
+OLDMERC_TEAM_BUCKET_DIR = "tf2cc/oldmerc/bucket_team"
+TEAMS = ("red", "blue", "green", "yellow")
+
+
+# Old-Merc items that had no sprite of their own in the old builds: rendered in the old sprites'
+# style (tools/tf2c/render_old_icons.py, CustomSlop's v2 renderer), same 256x128 DXT5 layout.
+OLD_ICON_FILES = {n: os.path.join(ROOT, "research", "tf2cc-icons", n + ".vtf")
+                  for n in ("bucket_frag_b4", "bucket_heavyartillery_b2", "bucket_snubnose_b4", "bucket_chainsaw_b4",
+                            "bucket_cyclops_b4")}
+
+
+def old_sprite_fmt(name):
+    data = open(OLD_ICON_FILES.get(name) or os.path.join(OLD_SPRITES, name + ".vtf"), "rb").read()
+    return struct.unpack_from("<i", data, 52)[0]
+
+
+def old_sprite_square(name):
+    """Top mip of an old TF2C bucket sprite (256x128 DXT5, any mip count, VTF 7.2-7.4: the
+    high-res image is the last block of the file) padded to 256x256. The rendered icons
+    (OLD_ICON_FILES) are 256x128 RGBA8888 (format 0, no DXT artefacts on thin parts)."""
+    data = open(OLD_ICON_FILES.get(name) or os.path.join(OLD_SPRITES, name + ".vtf"), "rb").read()
+    w, h = struct.unpack_from("<HH", data, 16)
+    fmt = struct.unpack_from("<i", data, 52)[0]
+    if w != 256 or h != 128 or fmt not in (0, 15):
+        raise SystemExit("old bucket sprite %s: unexpected %dx%d fmt %d" % (name, w, h, fmt))
+    bpp = 4 if fmt == 0 else 1                      # DXT5: 16 bytes per 4x4 block = 1 byte per pixel
+    pix = data[len(data) - w * h * bpp:]
+    pad = b"\0" * ((h // 2) * w * 4 if fmt == 0 else (h // 2 // 4) * (w // 4) * 16)
+    return pad + pix + pad
+
+
+# Icons rendered posed to a stock icon (tools/tf2c/render_fit_icons.py: 512x512 RGBA PNGs; team
+# sets as <name>_red/_blue/_green/_yellow.png). Staged as they are (stock 512 DXT5 clamp format).
+# (team_rescueranger / team_overhealer / team_makeshiftmutilator / bucket_snubnose_b4v2 were rendered
+# but not shipped: the user kept the deployed icons for those four, 2026-11-16.)
+# Batch 16 (user 2026-11-17: team-coloured icons for these three, "just hue-shift the existing
+# ones"; coordinator: only the regions the team skins recolour): tools/tf2c/team_skin_icons.py.
+PNG_ICONS = ("bucket_cyclops_b4v2", "bucket_chainsaw_b4v2", "bucket_coffeepot_b4v2", "team_frag_b4",
+             "team_rescueranger_skin", "team_overhealer_skin", "team_makeshiftmutilator_skin")
+
+
+def stage_png_icon(stager, name, team):
+    import dxt
+    from PIL import Image
+    rel = "%s/%s" % (OLDMERC_TEAM_BUCKET_DIR if team else OLDMERC_BUCKET_DIR, name.lower())
+
+    def put(dst, src):
+        img = Image.open(os.path.join(ROOT, "research", "tf2cc-icons", src + ".png")).convert("RGBA")
+        if img.size != (512, 512):
+            raise SystemExit("rendered icon %s is %dx%d, not 512x512" % (src, img.width, img.height))
+        path = os.path.join(STAGE, "materials", dst + ".vtf")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "wb").write(dxt.icon_vtf(np.asarray(img)))
+        stager.copied.add(("materials/" + dst + ".vtf").lower())
+        write_icon_vmt(stager, dst, dst)
+    if not team:
+        put(rel, name)
+        write_icon_vmt(stager, rel + "_large", rel)
+        return rel, False
+    put(rel, name + "_red")
+    for t in TEAMS:
+        put("%s_%s" % (rel, t), "%s_%s" % (name, t))
+    return rel, True
+
+
+def stage_old_bucket_icon(stager, name, team):
+    """Stage old TF2C sprite `name` (team: its _red/_blue/_green/_yellow sprites, all four ship in
+    the old builds) as an item icon; returns (image_inventory, teamcolor)."""
+    if name in PNG_ICONS:
+        return stage_png_icon(stager, name, team)
+    rel = "%s/%s" % (OLDMERC_TEAM_BUCKET_DIR if team else OLDMERC_BUCKET_DIR, name.lower())
+    flags = 0x2300                          # NOMIP | NOLOD | EIGHTBITALPHA, as the OF icons
+    base = old_sprite_square(name + "_red" if team else name)
+    write_icon_vtf(os.path.join(STAGE, "materials", rel + ".vtf"), 256, 256, old_sprite_fmt(name + "_red" if team else name),
+              flags, 1, base)
+    stager.copied.add(("materials/" + rel + ".vtf").lower())
+    write_icon_vmt(stager, rel, rel)
+    if not team:
+        # materials/<image>_large.vmt wins in the item panel lookup (see TEAM_BUCKET_DIR)
+        write_icon_vmt(stager, rel + "_large", rel)
+        return rel, False
+    for t in TEAMS:
+        write_icon_vtf(os.path.join(STAGE, "materials", "%s_%s.vtf" % (rel, t)), 256, 256, 15, flags, 1,
+                  old_sprite_square("%s_%s" % (name, t)))
+        stager.copied.add(("materials/%s_%s.vtf" % (rel, t)).lower())
+        write_icon_vmt(stager, "%s_%s" % (rel, t), "%s_%s" % (rel, t))
+    return rel, True
+
+
+OLDCLASS_TEAM_BUCKET_DIR = "tf2cc/oldclass/bucket_team"
+
+
+OLDCLASS_BUCKET_DIR = "tf2cc/oldclass/bucket"
+
+
+def stage_square_icon(stager, name, src):
+    """A square backpack icon (512x512 VTF, DXT5 or BGRA/RGBA, any mips: the top mip is the last
+    block) staged in the item icon format (write_icon_vtf). Returns image_inventory."""
+    import dxt
+    data = open(src, "rb").read()
+    w, h = struct.unpack_from("<HH", data, 16)
+    fmt = struct.unpack_from("<i", data, 52)[0]
+    bpp = {15: 1, 0: 4, 12: 4}[fmt]
+    pix = data[len(data) - w * h * bpp:]
+    if fmt == 12:
+        pix = np.frombuffer(pix, np.uint8).reshape(h, w, 4)[..., [2, 1, 0, 3]].tobytes()
+        fmt = 0
+    rel = "%s/%s" % (OLDCLASS_BUCKET_DIR, name)
+    rgba = dxt.decode(pix, w, h, fmt)
+    from PIL import Image
+    img = Image.fromarray(rgba, "RGBA").convert("RGBa").resize((512, 512), Image.LANCZOS).convert("RGBA")
+    path = os.path.join(STAGE, "materials", rel + ".vtf")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "wb").write(dxt.icon_vtf(np.asarray(img)))
+    stager.copied.add(("materials/" + rel + ".vtf").lower())
+    write_icon_vmt(stager, rel, rel)
+    write_icon_vmt(stager, rel + "_large", rel)
+    return rel
+
+
+def stage_old_bucket_icon_recolor(stager, name):
+    """Old TF2C sprite with only <name>_red/_blue (the Medi Gun's): a team icon whose green and
+    yellow are recoloured from red (vtfcolor's DXT endpoint method); returns image_inventory."""
+    import vtfcolor
+    rel = "%s/%s" % (OLDCLASS_TEAM_BUCKET_DIR, name.lower())
+    flags = 0x2300
+    red = old_sprite_square(name + "_red")
+    write_icon_vtf(os.path.join(STAGE, "materials", rel + ".vtf"), 256, 256, 15, flags, 1, red)
+    stager.copied.add(("materials/" + rel + ".vtf").lower())
+    write_icon_vmt(stager, rel, rel)
+    for t in TEAMS:
+        pix = old_sprite_square(name + "_" + t) if t in ("red", "blue") else bytes(vtfcolor.recolor_pixels(red, 15, t))
+        write_icon_vtf(os.path.join(STAGE, "materials", "%s_%s.vtf" % (rel, t)), 256, 256, 15, flags, 1, pix)
+        stager.copied.add(("materials/%s_%s.vtf" % (rel, t)).lower())
+        write_icon_vmt(stager, "%s_%s" % (rel, t), "%s_%s" % (rel, t))
+    return rel
 
 
 TEAMSKIN_MAT_DIR = "models/tf2cc/of/teamskin"
@@ -916,6 +1348,7 @@ def build_marxvee(stager, items, sounds, by_class, report):
         it.add("attributes", attrs)
         st = kv.KV()
         st.add("custom hand viewmodel", MERC_ARMS)
+        st.add(MIN_VM_KEY, MARXVEE_MIN_VM[wid])
         it.add("static_attrs", st)
         vis = kv.KV()
         if wid == "merc_medkit":
@@ -923,6 +1356,11 @@ def build_marxvee(stager, items, sounds, by_class, report):
                 vis.add("sound_" + t, sounds.silent())
         if vis.pairs:
             it.add("visuals", vis)
+        icon = stage_bucket_icon(stager, wid, None)
+        if icon:
+            it.add("image_inventory", icon)
+            if stage_team_icons(stager, wid, None, icon):
+                it.add("image_inventory_teamcolor", "1")
         for mdl in (vm_new, wm_new):
             if mdl:
                 team_skin_patch(stager, mdl, report)
@@ -932,7 +1370,7 @@ def build_marxvee(stager, items, sounds, by_class, report):
 NOT_YET = set()
 
 
-def write_plugin_cfg(items, cfg):
+def write_plugin_cfg(items, cfg, oldmerc_rows=()):
     """Plugin weapon list: item name, slot, ammo-pack weight, world model, default flag."""
     out = kv.KV()
     for wid, ofkey, cls, slot, bucket, group, aset in ROSTER:
@@ -964,6 +1402,29 @@ def write_plugin_cfg(items, cfg):
         e.add("default", "0")
         e.add("marxvee", "1")     # offered only when listed in tf2cc_marxvee_items
         out.add(wid, e)
+    # Old TF2 Classic Merc items (gen_oldmerc.py): "oldmerc" default / new / variant; defaults
+    # name their !mercprefs group ("pref") and are never in a pool; variants are in the pool while
+    # tf2cc_oldmerc_variants is 1; "canonical" is the roster weapon they stand for (taunts).
+    for r in oldmerc_rows:
+        e = kv.KV()
+        e.add("item", "tf2cc_" + r["wid"])
+        e.add("defindex", r["defindex"])
+        e.add("slot", r["slot"])
+        e.add("pack_weight", "0" if r["kind"] == "default" else r["weight"])
+        e.add("worldmodel", r["world"])
+        e.add("default", "1" if r["kind"] == "default" else "0")
+        e.add("oldmerc", r["kind"])
+        if r["pref"]:
+            e.add("pref", r["pref"])
+        if r["canonical"]:
+            e.add("canonical", r["canonical"])
+        if r.get("copy_of"):
+            e.add("copy_of", r["copy_of"])     # a Merc picking up this definition gets the copy
+        if r.get("pack_rare"):
+            e.add("pack_rare", "%g" % r["pack_rare"])   # rolled before the weighted pack pick (SpawnPackWeapon)
+        if r.get("akimbo_from"):
+            e.add("akimbo_from", r["akimbo_from"])   # two of these single pistols make this akimbo
+        out.add(r["wid"], e)
     os.makedirs(os.path.dirname(PLUGIN_CFG), exist_ok=True)
     open(PLUGIN_CFG, "w", encoding="utf-8", newline="\n").write(
         "// tf2cc for TF2 Classified: Mercenary weapons (generated by tools/tf2c/gen_schema.py; do not edit)\n"
@@ -971,13 +1432,151 @@ def write_plugin_cfg(items, cfg):
         '"tf2cc_tf2c_weapons"\n{\n' + kv.dump(out, 1) + "}\n")
 
 
+# Minimal viewmodels (tf_use_min_viewmodels): TF2C 5205's client offsets a weapon's viewmodel by
+# the item's static attribute "min_viewmodel_offset" "x y z". Merc items take their source game's
+# value (OF WeaponData MinViewmodelOffset_X/_Y/_Z), else the closest stock 5205 item's (same item
+# class, lowest defindex, prefabs resolved); MarxVee items have no source value (MARXVEE_MIN_VM).
+MIN_VM_KEY = "min_viewmodel_offset"
+MARXVEE_MIN_VM = {"merc_machinegun": "10 0 -7",      # stock SMG (16)
+                  "merc_medkit": "10 0 -10"}         # stock first-aid/PDA-style held items (25/26)
+
+
+def of_min_vm(wd):
+    x, y, z = (wd.get("MinViewmodelOffset_" + a) for a in "XYZ")
+    if x is None and z is None:
+        return None
+    return "%s %s %s" % (x or "0", y or "0", z or "0")
+
+
+def stock_min_vm(base_items_game):
+    """item_class -> min_viewmodel_offset of the lowest-defindex stock item of that class."""
+    prefabs = base_items_game.get("prefabs") or kv.KV()
+    out = {}
+    rows = []
+    for k, v in base_items_game["items"].blocks():
+        if not k.isdigit():
+            continue
+        cls, mv = v.get("item_class"), None
+        st = v.get("static_attrs")
+        if st is not None:
+            mv = st.get(MIN_VM_KEY)
+        for pn in (v.get("prefab") or "").split():
+            pf = prefabs.get(pn)
+            if pf is None:
+                continue
+            cls = cls or pf.get("item_class")
+            if mv is None and pf.get("static_attrs") is not None:
+                mv = pf.get("static_attrs").get(MIN_VM_KEY)
+        if cls and mv:
+            rows.append((int(k), cls.lower(), mv))
+    for _, cls, mv in sorted(rows):
+        out.setdefault(cls, mv)
+    out.setdefault("tf_weapon_shotgun_primary", out.get("tf_weapon_shotgun"))
+    out.setdefault("tf_weapon_shotgun_soldier", out.get("tf_weapon_shotgun"))
+    return out
+
+
+OLDCLASS_CFG = os.path.join(ROOT, "config", "sourcemod", "configs", "tf2cc_tf2c", "oldclass.cfg")
+
+
+def write_oldclass_cfg(rows):
+    """configs/tf2cc_tf2c/oldclass.cfg: the old class items (tf2cc_oldclass.smx: reserve at spawn
+    for the old mod_spawn_ammo_override, which 5205 does not implement)."""
+    out = kv.KV()
+    for r in rows:
+        e = kv.KV()
+        e.add("defindex", r["defindex"])
+        e.add("slot", r["slot"])
+        if r.get("spawn_ammo"):
+            e.add("spawn_ammo", r["spawn_ammo"])
+        for k, v in (r.get("cfg") or {}).items():
+            e.add(k, v)
+        out.add(r["wid"], e)
+    with open(OLDCLASS_CFG, "w", encoding="utf-8", newline="\n") as f:
+        f.write("// tf2cc for TF2 Classified: old TF2 Classic class weapons (generated by tools/tf2c/gen_schema.py; do not edit)\n"
+                '"tf2cc_tf2c_oldclass"\n{\n' + kv.dump(out, 1) + "}\n")
+
+
+STOCK_MIN_VM = {}
+
+
+# April Fools items whose icon paths no longer exist in 5205 (user, 2026-11-16): point them at
+# what the stock item uses today (the HUD bucket and the armory both draw image_inventory).
+# Stock 2008 Mine Layer: vgui/loadout/weapons/mine_layer; stock 2018 Rejuvenator:
+# vgui/loadout/weapons/rejuvenator + image_inventory_teamcolor 1 (only _red/_blue/_green/_yellow ship).
+AF_ICON_OVERRIDES = dict(
+    [(str(d), {"image_inventory": "vgui/loadout/weapons/mine_layer"}) for d in range(17503, 17509)]
+    + [("17513", {"image_inventory": "vgui/loadout/weapons/rejuvenator", "image_inventory_teamcolor": "1"})]
+    + [("17502", {"item_iconname": "tf2cc_af_flyswatter_v1"})])   # Flyswatter kill icon (approved 2026-11-17)
+
+
+# Kill icons (user-approved set, 2026-11-17; the kill-icon review's integration plan):
+# item_iconname -> resource/svgs/deathnotice/<name>.svg (tools/tf2c/static, read by the client at game
+# start) or a stock 5205 name. Applied to every tf2cc item after generation; April Fools items go
+# through AF_ICON_OVERRIDES. (Overhealer, Bible, Hot Wings, Jarate, Rejuvenator 2: no kills, unchanged.)
+ICONNAMES = {
+    "30100": "tf2cc_merc_crowbar_v1",
+    "30101": "tf2cc_merc_leadpipe_v2",
+    "30102": "tf2cc_merc_knife_v2",
+    "30104": "tf2cc_merc_chainsaw_v2",
+    "30105": "tf2cc_merc_pistol_v1",
+    "30106": "tf2cc_merc_akimbo_v1",
+    "30107": "tf2cc_merc_revolver_v1",
+    "30108": "shotgun",
+    "30109": "smg",
+    "30110": "tf2cc_merc_tommygun_v1",
+    "30111": "tf2cc_merc_dynamite_v1",
+    "30112": "tf2cc_merc_supershotgun_v1",
+    "30113": "tf2cc_merc_assaultrifle_v1",
+    "30114": "tf2cc_merc_rocketlauncher_v1",
+    "30115": "tf2cc_merc_chinalake_v2",
+    "30116": "nailgun",
+    "30117": "tf2cc_merc_gatling_v1",
+    "30118": "tf2cc_merc_railgun_v1",
+    "30119": "tf2cc_merc_lightning_v1",
+    "30120": "tf2cc_merc_gib_v2",
+    # Placeholders (2026-11-17): the kill-icon pipeline supplies these SVGs from OF's d_/dneg_ sets.
+    "30121": "tf2cc_merc_quad_v1",
+    "30122": "tf2cc_merc_bouncer_v1",
+    "30123": "tf2cc_merc_eternalshotgun_v1",
+    "30124": "tf2cc_merc_sawballista_v1",
+    "30150": "tf2cc_merc_machinegun_v1",
+    "30151": "tf2cc_merc_medkit_v1",
+    "30202": "tf2cc_merc_crowbar_4rdm_v1",
+    "30203": "tf2cc_merc_supershotgun_b4_v1",
+    "30204": "tf2cc_merc_chainsaw_b4_v1",
+    "30205": "tf2cc_merc_tommygun_b4_v1",
+    "30207": "fists",
+    "30208": "nailgun",
+    "30210": "tf2cc_merc_sixshooter_v1",
+    "30211": "tf2cc_merc_frag_v1",
+    "30212": "tf2cc_merc_heavyartillery_v1",
+    "30213": "tf2cc_merc_stengun_v1",
+    "30226": "tf2cc_merc_coffeepot_v1",
+    "30300": "tf2cc_oldclass_rescueranger_v1",
+    "30301": "tf2cc_oldclass_poacherspride_v1",
+    "30302": "tf2cc_merc_stengun_v1",
+    "30303": "tf2cc_merc_stengun_v1",
+    "30304": "shotgun",
+    "30305": "tf2cc_oldclass_smg_b4_v1",
+    "30306": "tf2cc_oldclass_cyclops_b4_v1",
+    "30307": "tf2cc_oldclass_rpg_b4_v1",
+    "30309": "ubersaw",
+    "30310": "tf2cc_oldclass_makeshiftmutilator_v1",
+}
+
+
 def build(af_path):
     report = []
+    STOCK_MIN_VM.update(stock_min_vm(kv.load(BASE_SCHEMA)[0]["items_game"]))
     stager = Stager(report)
     acts = json.load(open(ACTS))["replace"]
     by_class = load_attr_names()
     of_root, _ = kv.load(os.path.join(OFG, "scripts", "items", "items_game.txt"), "latin-1")
     of_weapons = (of_root.get("items_game") or of_root)["Weapons"]
+    for key, text in SYNTH_WEAPONS.items():
+        if of_weapons.get(key) is None:
+            of_weapons.add(key, kv.parse(text)[0][key])
     scripts = fvs.load_custom()     # OF scripts first, then TF2C's
     tf2c_scripts = set()
     for path in fvs.vpk("list", fvs.TF2C_VPK, "scripts/game_sounds").decode().split():
@@ -995,8 +1594,10 @@ def build(af_path):
     stock_waves |= set(p.lower() for p in fvs.vpk("list", hl2_snd, "sound/").decode().split())
     stager.stock_waves = stock_waves
     stage_merc_body(stager)
-    for extra in EXTRA_MODELS:          # models only the plugin uses
-        stager.model(extra)
+    for extra in EXTRA_MODELS:          # models only the plugin uses / projectile models
+        rel = stager.model(extra)
+        if rel:
+            team_skin_patch(stager, rel, report)    # RED/BLU/GRN/YLW families (the projectile's m_nSkin)
     stage_bomblet(stager)
     stage_extra_sounds(stager)
     sounds = SoundScripts(stager, load_of_soundscripts())
@@ -1092,8 +1693,9 @@ def build(af_path):
                 a.add("value", "%g" % round(omax / bmax, 4))
                 attrs.add(nm, a)
                 notes.append("MaxAmmo %g (OF %g / base %g)" % (omax / bmax, omax, bmax))
-        for acls, val in EXTRA_ATTRS.get(wid, []):
-            nm = attr_name(by_class, acls, val)
+        for extra in EXTRA_ATTRS.get(wid, []):
+            acls, val = extra[0], extra[1]
+            nm = extra[2] if len(extra) > 2 else attr_name(by_class, acls, val)
             if nm:
                 a = kv.KV()
                 a.add("attribute_class", acls)
@@ -1108,6 +1710,10 @@ def build(af_path):
         st.add("custom hand viewmodel", MERC_ARMS)
         for k, v in STRING_ATTRS.get(wid, {}).items():
             st.add(k, v)
+        mvo = of_min_vm(wd) or STOCK_MIN_VM.get(cls.lower())
+        if mvo:
+            st.add(MIN_VM_KEY, mvo)
+            notes.append("min vm %s (%s)" % (mvo, "OF" if of_min_vm(wd) else "stock " + cls))
         it.add("static_attrs", st)
 
         vis = kv.KV()
@@ -1167,12 +1773,58 @@ def build(af_path):
                       % (wid, FIRST_ID + n, cls, aset, len(rep.pairs), ",".join(snd_notes), nfix, "; ".join(notes)))
 
     build_marxvee(stager, items, sounds, by_class, report)
+    import gen_oldmerc
+    for rel in gen_oldmerc.stage_files(STAGE):
+        stager.copied.add(rel.lower())
+    base_root, _ = kv.load(BASE_SCHEMA)
+    oldmerc_rows = gen_oldmerc.build(items, by_class, attr_name, acts, base_root["items_game"]["items"], report,
+                                      old_icon=lambda name, team: stage_old_bucket_icon(stager, name, team),
+                                      min_vm=STOCK_MIN_VM)
+    if af_path:
+        af_items = kv.load(af_path)[0]["items_game"].get("items") or kv.KV()
+        oldmerc_rows += gen_oldmerc.build_af_copies(items, af_items, report, min_vm=STOCK_MIN_VM)
+    # Old TF2 Classic class weapons (gen_oldclass.py): ordinary class items, not Merc weapons
+    # (no weapons.cfg row: the plugin strips weapons.cfg items from non-Mercs).
+    import gen_oldclass
+
+    def stock_text(rel):
+        for v in (fvs.TF2C_VPK, fvs.TF2_VPK):
+            b = fvs.vpk("cat", v, rel)
+            if b:
+                return b.decode("latin-1")
+        return None
+    gen_oldclass.load_trails(stock_text)
+    for rel in gen_oldclass.stage_files(STAGE):
+        stager.copied.add(rel.lower())
+    attr_names = {(a.get("name") or "").lower() for _, a in base_root["items_game"]["attributes"].blocks()}
+    oldclass_rows = gen_oldclass.build(items, attr_names, report,
+                                       old_icon=lambda name, team: stage_old_bucket_icon(stager, name, team),
+                                       team_icon=lambda name: stage_old_bucket_icon_recolor(stager, name),
+                                       square_icon=lambda name, src: stage_square_icon(stager, name, src),
+                                       min_vm=STOCK_MIN_VM)
+    write_oldclass_cfg(oldclass_rows)
+    # Akimbo stock pistols (gen_akimbo_stock.py): two stock TF2C pistols make OF's akimbo with them
+    import gen_akimbo_stock
+    for rel in gen_akimbo_stock.stage(STAGE, report):
+        stager.copied.add(rel.lower())
+    oldmerc_rows.append(gen_akimbo_stock.build(items, report))
     for name in EXTRA_SCRIPT_SOUNDS:
         if not sounds.name_for(name):
             report.append("  !! extra sound script %s not in OF" % name)
     n_scripts = sounds.write()
+    with open(os.path.join(STAGE, SOUNDSCRIPT_REL), "a", encoding="utf-8", newline="\n") as f:
+        f.write(gen_oldmerc.sound_text())
+        f.write(gen_oldclass.sound_text())
+        f.write(DEMO_CHARGE_SOUNDS)
     report.append("sound scripts: %d (%s); missing waves: %s" % (n_scripts, SOUNDSCRIPT_REL, ", ".join(sorted(set(sounds.missing))) or "none"))
-    write_plugin_cfg(items, cfg)
+    reload_playback_fix(items, report)
+    write_plugin_cfg(items, cfg, oldmerc_rows)
+    for k, v in items.items():
+        if k in ICONNAMES and isinstance(v, kv.KV):
+            v.set("item_iconname", ICONNAMES[k])
+    missing = sorted(set(ICONNAMES) - set(items.keys()))
+    if missing:
+        report.append("  !! ICONNAMES for items not generated: %s" % ", ".join(missing))
     out = kv.KV()
     out.add("items", items)
     body = kv.dump(out, 1)
@@ -1183,6 +1835,10 @@ def build(af_path):
         merged = kv.KV()
         merged_items = kv.KV()
         for k, v in (afg.get("items") or kv.KV()).items():
+            if k in AF_ICON_OVERRIDES and isinstance(v, kv.KV):
+                v = kv.KV(list(v.pairs))           # the AF source stays untouched
+                for ok, ov in AF_ICON_OVERRIDES[k].items():
+                    v.set(ok, ov)
             merged_items.add(k, v)
         for k, v in items.items():
             merged_items.add(k, v)

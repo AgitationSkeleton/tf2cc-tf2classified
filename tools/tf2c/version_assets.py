@@ -48,7 +48,9 @@ REPLACE = {"scripts/items/custom_items_game.txt", "scripts/items/custom_level_so
 OWN_PREFIXES = ("models/player/tf2cc/", "models/tf2cc/", "sound/tf2cc/", "sound/vo/tf2cc/",
                 "materials/tf2cc/", "materials/models/tf2cc/", "materials/vgui/tf2cc/")
 MODEL_EXT = (".dx90.vtx", ".dx80.vtx", ".sw.vtx", ".vtx", ".vvd", ".phy", ".ani", ".mdl")
-ICON_DIRS = ("materials/tf2cc/of/bucket/", "materials/vgui/tf2cc/")
+ICON_DIRS = ("materials/tf2cc/of/bucket/", "materials/tf2cc/of/bucket_team/", "materials/tf2cc/oldmerc/bucket/",
+             "materials/tf2cc/oldclass/bucket/", "materials/tf2cc/oldclass/bucket_team/",
+             "materials/tf2cc/oldmerc/bucket_team/", "materials/vgui/tf2cc/")
 ICON_SUFFIX = re.compile(r"_(large|red|blue|green|yellow)$")
 TEXT_EXT = (".txt", ".vmt", ".res", ".cfg")
 
@@ -108,6 +110,23 @@ def staged():
 
 
 def group_key(rel):
+    low = rel.lower()
+    for ext in MODEL_EXT:
+        if low.startswith("models/") and low.endswith(ext):
+            return rel[:-len(ext)]
+    stem, ext = os.path.splitext(rel)
+    if low.startswith(ICON_DIRS) and ext.lower() in (".vmt", ".vtf"):
+        key = ICON_SUFFIX.sub("", stem)
+        # the materials/vgui/ copy of an icon belongs to the icon: same new name (the client
+        # looks up "vgui/<image_inventory>" too)
+        if key.lower().startswith("materials/vgui/"):
+            key = "materials/" + key[len("materials/vgui/"):]
+        return key
+    return stem
+
+
+def own_stem(rel):
+    """The part of rel the version tag follows (its group key spelled as rel spells it)."""
     low = rel.lower()
     for ext in MODEL_EXT:
         if low.startswith("models/") and low.endswith(ext):
@@ -192,7 +211,8 @@ def main():
                 h.update(open(os.path.join(STAGE, r), "rb").read())
             tag = "_" + h.hexdigest()[:8]
             for r in members:
-                new = key + tag + r[len(key):]
+                st = own_stem(r)
+                new = st + tag + r[len(st):]
                 os.makedirs(os.path.dirname(os.path.join(STAGE, new)), exist_ok=True)
                 os.replace(os.path.join(STAGE, r), os.path.join(STAGE, new))
                 mapping[r] = new

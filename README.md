@@ -8,6 +8,34 @@ taunts and HUD bits. Players opt in with `!merc` (or the class menu's Random); b
 
 This is the TF2 Classified port of tf2cc (the stock-TF2 version is a separate project).
 
+## What's in it
+
+* **Mercenary weapons** with Open Fortress stats, models, sounds and animations: Crowbar, Lead
+  Pipe, Combat Knife, Fists, Chainsaw, Pistol and Akimbo, Revolver, Shotgun, Combat SMG, Tommy
+  Gun, Dynamite, Super Shotgun, Eternal Shotgun (alt-fire meat hook), Assault Rifle, Rocket
+  Launcher, Quad Launcher, China Lake, Bouncer, Nailgun, Gatling Gun, Railgun (scoped, on the
+  sniper rifle), Lightning Gun, G.I.B., Saw Ballista (ricocheting blade); the older TF2 Classic
+  Mercenary weapons (2.0.0 betas and the 4dm map set) as alternatives; two stock pistols make
+  Akimbo pistols.
+* **Old TF2 Classic class weapons** for the normal classes (ordinary loadout items): Rescue
+  Ranger, Poacher's Pride (on the hunting revolver: clip, scopeless zoom, headshots while zoomed),
+  Sten Gun, Medic shotgun, old SMG, old Cyclops, old R.P.G., Overhealer, old Uberspritze,
+  Makeshift Mutilator.
+* **Kill-feed icons** for every tf2cc weapon (`resource/svgs/deathnotice/`).
+
+## Plugins
+
+All in `tf2classified/addons/sourcemod/plugins/`; load them all.
+
+| Plugin | Does |
+|---|---|
+| `tf2cc_tf2c` | the Mercenary role, weapons, pickups, drops, ammo packs, voice, taunts, HUD |
+| `tf2cc_oldclass` | old class weapons: spawn reserves, Rescue Ranger team bolts |
+| `tf2cc_ofexpl` | OF explosives: China Lake contact mines, Dynamite charge / cook-off / impact |
+| `tf2cc_ofrockets` | Quad Launcher homing, ping and radius growth; Bouncer ricochets |
+| `tf2cc_hook` | the Eternal Shotgun's meat hook |
+| `tf2cc_saw` | the Saw Ballista's blade (never explodes, 4 dmg every 0.03 s through targets, ricochets, sticks after 6 bounces) |
+
 ## Requirements
 
 * TF2 Classified dedicated server, build 5205 (x64), Metamod:Source and SourceMod 1.12+.
@@ -19,7 +47,7 @@ This is the TF2 Classified port of tf2cc (the stock-TF2 version is a separate pr
 ## Install
 
 1. Copy `tf2classified/addons` into the server's `tf2classified/` folder
-   (plugin, source, `configs/tf2cc_tf2c/`).
+   (plugins, sources, `configs/tf2cc_tf2c/`).
 2. Copy `tf2classified/custom/tf2cc_merc/` into the server's `tf2classified/custom/`.
 3. Item schema: build the server's `custom_items_game.txt` with
    `python -I tools/tf2c/merge_schema.py schema/tf2cc_items.txt <out> [<your current custom_items_game.txt>]`
@@ -67,6 +95,11 @@ Main cvars (all in `cfg/sourcemod/tf2cc_tf2c.cfg`, created on first load):
 | `tf2cc_merc_exempt_autodetect` | 1 | skip maps that run their own Merc script |
 | `tf2cc_tf2c_debug` | 0 | step log in `logs/tf2cc_tf2c.log` |
 
+The other plugins write their own `cfg/sourcemod/<plugin>.cfg`: `tf2cc_eternal_hook_*` (hook
+speed, range, pull, cooldown; optional stun, hold-to-reel and world grapple, off by default),
+`tf2cc_saw_*` (blade damage, tick, cap, slow-down, bounces, stick time), `tf2cc_quad_*` and
+`tf2cc_bouncer_*` (`tf2cc_ofrockets`), `tf2cc_chinalake_*` and `tf2cc_dynamite_*` (`tf2cc_ofexpl`).
+
 ## Rebuilding
 
 `tools/` holds the generators that produce `custom/tf2cc_merc` and the schema from an Open
@@ -77,8 +110,10 @@ CLI (your own login; nothing is stored here).
 
 The rebuild tools read the game installs and source trees they work from through path constants
 near the top of each script. In this release those are placeholders: `<STEAMCMD>/` stands for the
-folder holding your server installs (TF2, TF2 Classified, Open Fortress under `sdk2013/`) and
-`<SOURCE_TREES>/` for checkouts of the Source SDK 2013, TF2 Classified and Open Fortress sources.
+folder holding your server installs (TF2, TF2 Classified, Open Fortress under `sdk2013/`),
+`<SOURCE_TREES>/` for checkouts of the Source SDK 2013, TF2 Classified and Open Fortress sources,
+`<WORKDIR>/` for the working folders of the extracted old-build assets and research notes, and
+`<STEAM_GAMES>/` for a Steam client library (the team icon tool reads TF2's texture VPK there).
 Replace them with your own paths before running the tools. The plugin and the shipped assets don't
 need them.
 
@@ -86,7 +121,6 @@ need them.
 
 * Server-side only: everything a client sees comes from the downloaded schema and assets.
 * The Mercenary's "class" is the Soldier for the game (scoreboard, class limits).
-* Some secondary-ammo weapons share the pistol's reserve (assault rifle, railgun, lightning gun).
 * The Merc model has no Sandvich-eating animation (TF2's Soldier animations have none).
 
 ## Licence

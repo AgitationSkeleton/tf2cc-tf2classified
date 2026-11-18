@@ -1,0 +1,8 @@
+"UnlitGeneric"
+{
+	"$basetexture" "tf2cc/oldmerc/bucket/bucket_fists_6484526b"
+	"$translucent" "1"
+	"$vertexcolor" "1"
+	"$vertexalpha" "1"
+	"$ignorez" "1"
+}

@@ -26,6 +26,10 @@
 #include <sdkhooks>
 #include <tf2>
 #include <tf2_stocks>
+#include <clientprefs>
+#undef REQUIRE_PLUGIN
+#include <tf2attributes>
+#define REQUIRE_PLUGIN
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -83,6 +87,7 @@ ConVar g_cvEnabled, g_cvBotChance, g_cvPitch, g_cvLevel, g_cvPackChance, g_cvPac
 
 ConVar g_cvDebug, g_cvBlankIcon, g_cvAutoSwitch, g_cvAutoJump, g_cvTaunts, g_cvSvAutoJump;
 ConVar g_cvRet;              // VScript return channel (LookupSequence)
+ConVar g_cvStagedDir;        // custom/ folder of the staged files (AddDownloads)
 ConVar g_cvAutoDetect, g_cvRandomMenu, g_cvNoFall, g_cvMarxVee;
 bool g_bMapExempt;           // this map already plays the Mercenary itself (DM reclassified): tf2cc stays out
 bool g_bInternalJoin[MAXPLAYERS + 1];
@@ -133,8 +138,69 @@ float g_flOwnGive[MAXPLAYERS + 1];   // GenerateAndWearItem fires post_inventory
                                      // events right after our own grants are ignored (loop guard)
 
 // Merc weapons (weapons.cfg)
-ArrayList g_WItem, g_WSlot, g_WWeight, g_WModel, g_WDef, g_WDefault;
+ArrayList g_WItem, g_WSlot, g_WWeight, g_WModel, g_WDef, g_WDefault, g_WKind, g_WPref, g_WCanon, g_WRare;
+// weapons.cfg "oldmerc" (old TF2 Classic Merc items, tools/tf2c/gen_oldmerc.py)
+#define KIND_ROSTER 0
+#define KIND_OLDDEFAULT 1   // old spawn weapon (regular pistol, presplit crowbar): per preference
+#define KIND_NEW 2          // weapons OF never had: always in the pool (tf2cc_oldmerc_new_weapons)
+#define KIND_VARIANT 3      // other models/animations of a weapon: in the pool (tf2cc_oldmerc_variants)
+#define KIND_AFCOPY 4       // Merc copy of a TF2-style April Fools weapon (given instead of it, never pooled)
+StringMap g_CopyOf;         // defindex of an item a Merc gets a copy of -> weapons.cfg row of the copy
+StringMap g_AkimboOf;       // defindex of a single pistol -> weapons.cfg row of the akimbo two of them make ("akimbo_from")
+#define AKIMBO_NONE 0      // AkimboCheck: the pickup is not an akimbo half for him
+#define AKIMBO_MAKE 1      // he holds a matching pistol: the two make the akimbo
+#define AKIMBO_REFILL 2    // he holds the akimbo: the pistol refills its reserve
+#define AKIMBO_FULL 3      // he holds the akimbo with a full reserve: leave the pistol
+ConVar g_cvOldVariants, g_cvOldNew, g_cvMercPrefs;
+char g_sDefault[MAXPLAYERS + 1][SLOTS][64];   // the default weapon of each slot chosen at spawn
+
+/**
+ * !mercprefs options (modular: one row per choice between an OF spawn weapon and its old TF2
+ * Classic counterpart). Each has a server cvar: 0 OF only, 1 old only, 2 player's choice
+ * (default OF), 3 player's choice (default old), 4 random each life. An option is offered when
+ * tf2cc_mercprefs is 1, its cvar is 2 or 3 and both items are in weapons.cfg and the schema.
+ * Stored choices of an option that is not offered are ignored (kept, not deleted).
+ */
+enum struct PrefOption
+{
+	char key[16];          // weapons.cfg "pref" of the old item; cookie tf2cc_mercpref_<key>
+	char cvar[40];
+	char title[40];
+	char ofItem[64];
+	char ofLabel[40];
+	char oldLabel[40];
+}
+static const char g_sPrefRows[][] =
+{
+	"pistol|tf2cc_oldmerc_pistol|Starting pistol|tf2cc_merc_pistol|P38 (Open Fortress)|Pistol (TF2 Classic)",
+	"crowbar|tf2cc_oldmerc_crowbar|Starting crowbar|tf2cc_merc_crowbar|Crowbar (Open Fortress)|Crowbar (TF2 Classic presplit)"
+};
+PrefOption g_Prefs[sizeof(g_sPrefRows)];
+ConVar g_cvPref[sizeof(g_sPrefRows)];
+Cookie g_hPrefCookie[sizeof(g_sPrefRows)];
+bool g_bPrefLife[MAXPLAYERS + 1][sizeof(g_sPrefRows)];   // this life's resolution (old = true)
+bool g_bSettingsItem;
+int g_iPrefSim[MAXPLAYERS + 1][sizeof(g_sPrefRows)];
+ConVar g_cvDynBombCount, g_cvDynBombDamage, g_cvDynBombRadius;
+bool g_bDynPipe[2049];
+bool g_bDynBoom[2049];
+float g_vDynNormal[2049][3];
+int g_iBombKind[2049];
+
 StringMap g_ItemNames;       // defindex -> schema item name (base + custom schema)
+bool g_bArmsDirty[MAXPLAYERS + 1];   // was a Merc: refresh the arms when he next spawns as another class
+int g_iBoostWeapon[MAXPLAYERS + 1];     // the umbrella whose m_flNextBoostAttack is watched (CheckCivBoost)
+float g_flBoostNext[MAXPLAYERS + 1];
+int g_iBondVictim, g_iBondKiller;   // set around the bond taunt shot's damage (Event_DeathPre)
+float g_flNextBuffLine[MAXPLAYERS + 1];   // civ aura/boost positive line cooldown
+bool g_bArmsRespawn[MAXPLAYERS + 1];      // inside the arms-refresh respawn (Frame_ArmsRefresh)
+ConVar g_cvArmsRespawn;
+StringMap g_ItemBucket;      // defindex -> the item's own schema "bucket" (its slot on any class)
+StringMap g_Broken;          // entref of a broken bottle held by a Merc -> 1
+bool g_bBrokenView[MAXPLAYERS + 1];   // his viewmodel shows a broken bottle
+int g_iBodyActive[MAXPLAYERS + 1];    // weapon in hand at the last body check
+StringMap g_ItemSlot;        // defindex -> loadout slot (item_slot)
+StringMap g_ItemClass;       // defindex -> item_class
 StringMap g_Pickups;         // entref -> PickupData
 
 enum struct PickupData
@@ -173,6 +239,7 @@ public void OnPluginStart()
 {
 	CreateConVar("tf2cc_tf2c_version", PLUGIN_VERSION, "tf2cc for TF2 Classified version.", FCVAR_NOTIFY | FCVAR_DONTRECORD);
 	g_cvEnabled = CreateConVar("tf2cc_merc_enabled", "1", "Allow the Mercenary role.", _, true, 0.0, true, 1.0);
+	g_cvStagedDir = CreateConVar("tf2cc_tf2c_staged_dir", "", "Folder the tf2cc files are deployed to, relative to the game folder (empty = custom/0tf2cc_merc, else custom/tf2cc_merc). The downloads list is checked there (a plain file check).");
 	g_cvBotChance = CreateConVar("tf2cc_merc_bot_chance", "0.2", "Chance that a bot plays the Mercenary (rolled once per connection).", _, true, 0.0, true, 1.0);
 	g_cvPitch = CreateConVar("tf2cc_merc_voice_pitch", "100", "Pitch of Mercenary voice lines other than pain/death (100 = normal; old TF2C Merc ~90).", _, true, 50.0, true, 200.0);
 	g_cvLevel = CreateConVar("tf2cc_merc_voice_level", "95", "Sound level of Mercenary lines played by the plugin.", _, true, 60.0, true, 140.0);
@@ -184,6 +251,7 @@ public void OnPluginStart()
 	g_cvAmmoBox = CreateConVar("tf2cc_deathdrop_ammobox", "1", "Death-dropped ammo packs use the ammo box model, like live TF2.", _, true, 0.0, true, 1.0);
 	g_cvAutoEmpty = CreateConVar("tf2cc_pickup_auto_empty_slot", "1", "Walking over a weapon whose slot is empty picks it up (anything else is swapped with USE).", _, true, 0.0, true, 1.0);
 	g_cvBotSwap = CreateConVar("tf2cc_bot_pickup_swap_chance", "0.1", "Merc bots standing on a weapon: chance per 0.2 s to swap to it.", _, true, 0.0, true, 1.0);
+	g_cvArmsRespawn = CreateConVar("tf2cc_arms_respawn", "1", "After a Merc life, the first life as another class gets fresh viewmodels (removed, respawned in place) so the client drops the Merc arms.", _, true, 0.0, true, 1.0);
 	g_cvDebug = CreateConVar("tf2cc_tf2c_debug", "0", "Log each Mercenary setup step to logs/tf2cc_tf2c.log.", _, true, 0.0, true, 1.0);
 	g_cvBlankIcon = CreateConVar("tf2cc_merc_scoreboard_blank", "1", "Show no class icon for Mercenaries on the scoreboard (instead of the Soldier's).", _, true, 0.0, true, 1.0);
 	g_cvAutoSwitch = CreateConVar("tf2cc_pickup_autoswitch", "0", "0 = a picked-up weapon is only drawn when it replaces the weapon in hand (or the hands are empty); 1 = OF of_autoswitchweapons: draw every picked-up weapon unless attacking.", _, true, 0.0, true, 1.0);
@@ -196,6 +264,17 @@ public void OnPluginStart()
 	g_cvNoFall = CreateConVar("tf2cc_merc_no_fall_damage", "1", "1 = Mercenaries take no fall damage (OF's Merc has none). The damage is refused before it lands, so the fall-damage sound and pain line never play either.", _, true, 0.0, true, 1.0);
 	g_cvMarxVee = CreateConVar("tf2cc_marxvee_items", "", "Optional MarxVee-origin Merc weapons offered in ammo-pack grants (space-separated weapon ids, e.g. \"merc_machinegun merc_medkit\"; empty = none).");
 	g_cvMarxVee.AddChangeHook(OnMarxVeeChanged);
+	g_cvOldVariants = CreateConVar("tf2cc_oldmerc_variants", "1", "Old TF2 Classic Merc variant items (presplit/beta 4 models of existing weapons; the Merc-animated flare gun) are in the weapon pool: ammo-pack grants, pickups, Merc bots.", _, true, 0.0, true, 1.0);
+	g_cvOldNew = CreateConVar("tf2cc_oldmerc_new_weapons", "1", "Old TF2 Classic Merc weapons OF never had (Six-Shooter, Frag Grenade, Heavy Artillery, Sten Gun) are in the weapon pool.", _, true, 0.0, true, 1.0);
+	g_cvMercPrefs = CreateConVar("tf2cc_mercprefs", "1", "Players can choose their Mercenary spawn weapons with !mercprefs (and under !settings); 0 hides the command.", _, true, 0.0, true, 1.0);
+	PrefsInit();
+	g_cvDynBombCount = CreateConVar("tf2cc_dynamite_bomblets", "3", "Bomblets thrown when a Merc dynamite bundle explodes (OF / stock tf2cc 3; 0 = none).", _, true, 0.0, true, 12.0);
+	g_cvDynBombDamage = CreateConVar("tf2cc_dynamite_bomblet_damage", "70", "Damage of each dynamite bomblet (OF 70).", _, true, 0.0);
+	g_cvDynBombRadius = CreateConVar("tf2cc_dynamite_bomblet_radius", "124", "Blast radius of each dynamite bomblet (OF 124).", _, true, 0.0);
+	RegConsoleCmd("sm_mercprefs", Cmd_MercPrefs, "Mercenary: choose the spawn pistol and crowbar (Open Fortress or old TF2 Classic).");
+	RegAdminCmd("sm_tf2cc_prefsim", Cmd_PrefSim, ADMFLAG_CHEATS, "sm_tf2cc_prefsim <target> <pistol|crowbar> <of|old|clear|toggle|menu> - simulate a stored preference / the menu for bots (testing).");
+	RegAdminCmd("sm_tf2cc_pooltest", Cmd_PoolTest, ADMFLAG_CHEATS, "sm_tf2cc_pooltest [rolls] - roll the Merc weapon pool and count each weapon (testing).");
+	RegAdminCmd("sm_tf2cc_prefstest", Cmd_PrefsTest, ADMFLAG_CHEATS, "sm_tf2cc_prefstest <target> - show the Merc spawn-weapon preference resolution (testing).");
 	MedkitInit();
 	g_cvBotChance.AddChangeHook(OnBotChanceChanged);
 	g_cvEnabled.AddChangeHook(OnBotChanceChanged);
@@ -204,7 +283,7 @@ public void OnPluginStart()
 
 	RegConsoleCmd("sm_merc", Cmd_Merc, "Play (or stop playing) the Mercenary.");
 	RegConsoleCmd("sm_mercenary", Cmd_Merc, "Play (or stop playing) the Mercenary.");
-	RegAdminCmd("sm_setmerc", Cmd_SetMerc, ADMFLAG_SLAY, "sm_setmerc <target> <0|1>");
+	RegAdminCmd("sm_setmerc", Cmd_SetMerc, ADMFLAG_SLAY, "sm_setmerc <target> <0|1> [now] - like a class change: at once inside the respawn room, else at the next spawn (now: at once anywhere).");
 	RegAdminCmd("sm_tf2cc_givemerc", Cmd_GiveMerc, ADMFLAG_CHEATS, "sm_tf2cc_givemerc <target> <merc weapon id | schema item name> [slot] - give a weapon the way a pickup does (testing).");
 	RegAdminCmd("sm_tf2cc_spytest", Cmd_SpyTest, ADMFLAG_CHEATS, "sm_tf2cc_spytest <speaker> <target> - run the Spy! callout as if speaker aimed at target (testing).");
 	RegAdminCmd("sm_tf2cc_reload", Cmd_Reload, ADMFLAG_CONFIG, "Reload tf2cc_tf2c configs.");
@@ -222,16 +301,23 @@ public void OnPluginStart()
 	HookEvent("player_spawn", Event_Spawn);
 	HookEvent("post_inventory_application", Event_Inventory);
 	HookEvent("player_death", Event_Death);
+	HookEvent("player_death", Event_DeathPre, EventHookMode_Pre);
+	HookEvent("player_hurt", Event_Hurt);
+	HookEvent("player_disconnect", Event_Disconnect);
 	AddNormalSoundHook(Hook_Sound);
 	AddTempEntHook("TFExplosion", TE_GibExplosion);
-	AddNormalSoundHook(Hook_ChainsawSounds);
+	AddTempEntHook("Fire Bullets", TE_FireBullets);
 	ChainsawInit();
 
 	g_Pickups = new StringMap();
 	g_StockSlot = new StringMap();
 	for (int i = 1; i <= MaxClients; i++)
 		if (IsClientInGame(i))
+		{
 			SDKHook(i, SDKHook_OnTakeDamage, Hook_PlayerDamage);
+			SDKHook(i, SDKHook_OnTakeDamage, Hook_RailDamage);
+			SDKHook(i, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
+		}
 	LoadWeapons();
 	LoadVoice();
 	CreateTimer(0.2, Timer_PickupScan, _, TIMER_REPEAT);
@@ -264,6 +350,7 @@ public void OnMapStart()
 		AddDownloads();
 	PrecacheVoice();
 	PrecacheSoundScripts();
+	LogChargeSoundOverride();
 	char model[PLATFORM_MAX_PATH];
 	for (int i = 0; i < g_WModel.Length; i++)
 	{
@@ -285,17 +372,69 @@ public void OnMapStart()
 	CreateTimer(1.0, Timer_HookResource, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
+/**
+ * A map change reconnects every client (OnClientPutInServer runs again and reset the choice):
+ * a player who chose the Mercenary (or turned him off by command) keeps that choice on the next
+ * map. Saved at map end by userid (unchanged across a map change), dropped on a real disconnect.
+ */
+StringMap g_KeepChoice;
+
+public void OnMapEnd()
+{
+	if (g_KeepChoice == null)
+		g_KeepChoice = new StringMap();
+	char key[12];
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || (IsFakeClient(i) && !g_bExplicit[i]))
+			continue;
+		IntToString(GetClientUserId(i), key, sizeof(key));
+		g_KeepChoice.SetValue(key, (g_bWant[i] ? 1 : 0) | (g_bExplicit[i] ? 2 : 0) | (g_bSchemaHinted[i] ? 4 : 0));
+	}
+}
+
+public void Event_Disconnect(Event event, const char[] name, bool dontBroadcast)
+{
+	char key[12];
+	IntToString(event.GetInt("userid"), key, sizeof(key));
+	if (g_KeepChoice != null)
+		g_KeepChoice.Remove(key);
+}
+
+void RestoreChoice(int client)
+{
+	char key[12];
+	int v;
+	IntToString(GetClientUserId(client), key, sizeof(key));
+	if (g_KeepChoice == null || !g_KeepChoice.GetValue(key, v))
+		return;
+	g_KeepChoice.Remove(key);
+	g_bWant[client] = (v & 1) != 0;
+	g_bExplicit[client] = (v & 2) != 0;
+	g_bSchemaHinted[client] = (v & 4) != 0;
+	g_bBotRolled[client] = true;
+	Step("choice kept over the map change: %N want %d explicit %d", client, g_bWant[client], g_bExplicit[client]);
+}
+
 public void OnClientPutInServer(int client)
 {
 	SDKHook(client, SDKHook_OnTakeDamage, Hook_PlayerDamage);
+	SDKHook(client, SDKHook_OnTakeDamage, Hook_RailDamage);
+	SDKHook(client, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 	g_flNextHint[client] = g_flNextSpeak[client] = g_flNextPackTouch[client] = g_flChargeReady[client] = 0.0;
 	g_bWant[client] = g_bMerc[client] = g_bBotRolled[client] = g_bExplicit[client] = false;
 	g_bMercCorpse[client] = g_bTaunting[client] = g_bSchemaHinted[client] = false;
+	g_bArmsDirty[client] = false;
+	g_iBoostWeapon[client] = 0;
+	g_flNextBuffLine[client] = 0.0;
 	g_iBotPick[client] = 0;
+	for (int p = 0; p < sizeof(g_sPrefRows); p++)
+		g_iPrefSim[client][p] = 0;
 	g_bBotConverting[client] = g_bBotSoldierLife[client] = false;
 	g_flNextTaunt[client] = g_flNextJumpSound[client] = 0.0;
 	for (int s = 0; s < SLOTS; s++)
 		g_sInv[client][s][0] = '\0';
+	RestoreChoice(client);
 }
 
 public void OnClientDisconnect(int client)
@@ -368,6 +507,22 @@ bool MercAllowed()
 }
 
 /** The items' OF sound scripts (gen_schema.py): precached by name so every wave is in the table. */
+/** Debug: the stock charge scream must resolve to the null wave (custom_level_sounds.txt override). */
+void LogChargeSoundOverride()
+{
+	static const char names[][] = { "DemoCharge.Charging", "tf2cc.DemoCharge.Charging", "DemoCharge.ChargeCritOn", "tf2cc.DemoCharge.ChargeCritOn" };
+	for (int i = 0; i < sizeof(names); i++)
+	{
+		int channel, level, pitch;
+		float volume;
+		char sample[PLATFORM_MAX_PATH];
+		if (GetGameSoundParams(names[i], channel, level, volume, pitch, sample, sizeof(sample)))
+			Step("sound override %s -> %s (chan %d, level %d, vol %.2f)", names[i], sample, channel, level, volume);
+		else
+			Step("sound override %s: no such game sound", names[i]);
+	}
+}
+
 void PrecacheSoundScripts()
 {
 	// Top-level entries only ("name" on its own line); KeyValues cannot hold a file of roots.
@@ -477,10 +632,72 @@ bool ItemName(int def, char[] out, int maxlen)
 	return g_ItemNames.GetString(key, out, maxlen);
 }
 
-void GiveItem(int client, const char[] item)
+/**
+ * Gives a schema item by name. keepSlot (0-2) is the HUD slot the item will occupy: every weapon
+ * in the other two slots is detached for the give and equipped again (clip and reserves kept).
+ * GenerateAndWearItem replaces whatever the player holds in the item's LOADOUT slot (item_slot),
+ * which on the Soldier host is not always the slot the item lands in: an Engineer's primary
+ * shotgun is the Soldier's secondary, a Spy's revolver his primary. Picking one up removed the
+ * weapon of the other slot, and the inventory re-apply then gave that one back and removed the
+ * pickup in turn (a slot that could not be switched to). keepSlot -1: no detaching (wearables).
+ */
+void GiveItem(int client, const char[] item, int keepSlot = -1)
 {
+	int held[SLOTS], clip[SLOTS], n = 0;
+	char newSlot[16], hisSlot[16], key[12], newCls[64], hisCls[64];
+	int def = -1;
+	StringMapSnapshot snap = keepSlot >= 0 ? g_ItemNames.Snapshot() : null;
+	for (int k = 0; snap != null && k < snap.Length && def < 0; k++)
+	{
+		char nm[64];
+		snap.GetKey(k, key, sizeof(key));
+		g_ItemNames.GetString(key, nm, sizeof(nm));
+		if (StrEqual(nm, item))
+			def = StringToInt(key);
+	}
+	delete snap;
+	newSlot[0] = newCls[0] = '\0';
+	if (def >= 0)
+	{
+		LoadoutSlot(def, newSlot, sizeof(newSlot));
+		ItemClassOf(def, newCls, sizeof(newCls));
+	}
+	if (keepSlot >= 0)
+	{
+		for (int s = 0; s < SLOTS; s++)
+		{
+			int w = GetPlayerWeaponSlot(client, s);
+			if (s == keepSlot || w <= MaxClients)
+				continue;
+			// The give replaces a weapon in the same loadout slot, or one of the same weapon class
+			// (an assault rifle took the SMG: both tf_weapon_smg). Anything else is left alone.
+			LoadoutSlot(ItemDef(w), hisSlot, sizeof(hisSlot));
+			ItemClassOf(ItemDef(w), hisCls, sizeof(hisCls));
+			char wcls[64];
+			GetEntityClassname(w, wcls, sizeof(wcls));
+			bool sameSlot = !newSlot[0] || !hisSlot[0] || StrEqual(newSlot, hisSlot);
+			bool sameClass = newCls[0] && (StrEqual(newCls, hisCls) || StrContains(wcls, newCls) == 0 || StrContains(newCls, wcls) == 0);
+			if (!sameSlot && !sameClass)
+				continue;
+			clip[n] = GetEntProp(w, Prop_Send, "m_iClip1");
+			held[n++] = EntIndexToEntRef(w);
+			RemovePlayerItem(client, w);
+		}
+	}
 	g_flOwnGive[client] = GetEngineTime();
 	RunScriptF(client, "self.GenerateAndWearItem(\"%s\")", item);
+	if (n)
+	{
+		for (int k = 0; k < n; k++)
+		{
+			int w = EntRefToEntIndex(held[k]);
+			if (w <= MaxClients)
+				continue;
+			EquipPlayerWeapon(client, w);
+			SetEntProp(w, Prop_Send, "m_iClip1", clip[k]);
+		}
+		Step("give %N %s into slot %d: %d other weapon(s) kept aside", client, item, keepSlot, n);
+	}
 	OwnItems(client);
 }
 
@@ -664,6 +881,11 @@ int MercSlotOfStock(int def, int weapon, int fallback)
 	int slot;
 	if (g_StockSlot.GetValue(key, slot))
 		return slot;
+	if (g_ItemBucket != null && g_ItemBucket.GetValue(key, slot) && slot >= 0 && slot < SLOTS)
+	{
+		Step("stock slot %d for the Merc: %d (item bucket)", def, slot);
+		return slot;
+	}
 	GetEntityClassname(weapon, cls, sizeof(cls));
 	if (StrEqual(cls, "tf_weapon_shotgun_primary") || StrEqual(cls, "tf_weapon_shotgun_hwg") || StrEqual(cls, "tf_weapon_shotgun_pyro"))
 		strcopy(cls, sizeof(cls), "tf_weapon_shotgun_soldier");
@@ -711,13 +933,21 @@ bool WorldModelOf(int weapon, char[] out, int maxlen)
 
 void LoadWeapons()
 {
-	delete g_WItem; delete g_WSlot; delete g_WWeight; delete g_WModel; delete g_WDef; delete g_WDefault;
+	delete g_WItem; delete g_WSlot; delete g_WWeight; delete g_WModel; delete g_WDef; delete g_WDefault; delete g_WKind; delete g_WPref; delete g_WCanon; delete g_WRare;
 	g_WItem = new ArrayList(ByteCountToCells(64));
 	g_WModel = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
 	g_WSlot = new ArrayList();
 	g_WWeight = new ArrayList();
+	g_WRare = new ArrayList();
 	g_WDef = new ArrayList();
 	g_WDefault = new ArrayList();
+	g_WKind = new ArrayList();
+	g_WPref = new ArrayList(ByteCountToCells(16));
+	g_WCanon = new ArrayList(ByteCountToCells(64));
+	delete g_CopyOf;
+	g_CopyOf = new StringMap();
+	delete g_AkimboOf;
+	g_AkimboOf = new StringMap();
 	char path[PLATFORM_MAX_PATH], buf[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), CFG_WEAPONS);
 	KeyValues kv = new KeyValues("tf2cc_tf2c_weapons");
@@ -739,10 +969,22 @@ void LoadWeapons()
 		if (kv.GetNum("marxvee") && !MarxVeeEnabled(itemName))
 			weight = 0.0;
 		g_WWeight.Push(weight);
+		g_WRare.Push(kv.GetFloat("pack_rare"));
 		kv.GetString("worldmodel", buf, sizeof(buf));
 		g_WModel.PushString(buf);
 		g_WDef.Push(kv.GetNum("defindex", -1));
 		g_WDefault.Push(kv.GetNum("default") != 0);
+		kv.GetString("oldmerc", buf, sizeof(buf));
+		g_WKind.Push(StrEqual(buf, "default") ? KIND_OLDDEFAULT : StrEqual(buf, "new") ? KIND_NEW : StrEqual(buf, "variant") ? KIND_VARIANT : StrEqual(buf, "afcopy") ? KIND_AFCOPY : KIND_ROSTER);
+		kv.GetString("copy_of", buf, sizeof(buf));
+		if (buf[0])
+			g_CopyOf.SetValue(buf, g_WItem.Length - 1);
+		kv.GetString("akimbo_from", buf, sizeof(buf));
+		AkimboFrom(buf, g_WItem.Length - 1);
+		kv.GetString("pref", buf, sizeof(buf));
+		g_WPref.PushString(buf);
+		kv.GetString("canonical", buf, sizeof(buf));
+		g_WCanon.PushString(buf);
 	}
 	while (kv.GotoNextKey());
 	delete kv;
@@ -760,6 +1002,301 @@ bool MarxVeeEnabled(const char[] item)
 	return StrContains(list, id, false) != -1;
 }
 
+/* ------------------------------------------------------------------ */
+/* Old TF2 Classic Merc items: pool and spawn-weapon preferences      */
+/* ------------------------------------------------------------------ */
+
+/** Ammo-pack/pickup pool weight of weapons.cfg row i (0 = never offered). */
+float PoolWeight(int i)
+{
+	return (PoolKindOff(i) || !HasPickupModel(i)) ? 0.0 : view_as<float>(g_WWeight.Get(i));
+}
+
+/** A pack weapon is a physical pickup: rows without a world model (the fists: OF's and the
+ *  Hammerfists) could be rolled but SpawnPickup made nothing, about 1 pack roll in 25 (measured
+ *  2026-11-17: 2344 of 60000). They stay out of the pack pool. */
+bool HasPickupModel(int i)
+{
+	char model[4];
+	g_WModel.GetString(i, model, sizeof(model));
+	return model[0] != EOS;
+}
+
+/** Rows whose kind is switched off (cvars) or never pooled (old defaults, April Fools copies). */
+bool PoolKindOff(int i)
+{
+	int kind = g_WKind.Get(i);
+	return (kind == KIND_VARIANT && !g_cvOldVariants.BoolValue) || (kind == KIND_NEW && !g_cvOldNew.BoolValue) || kind == KIND_OLDDEFAULT || kind == KIND_AFCOPY;
+}
+
+/** TF2C weapon/projectile team skin: 0-3 = RED/BLU/GRN/YLW. */
+int TeamSkin(int team)
+{
+	return (team >= 2 && team <= 5) ? team - 2 : 0;
+}
+
+void PrefsInit()
+{
+	char parts[6][64], desc[320];
+	for (int p = 0; p < sizeof(g_sPrefRows); p++)
+	{
+		ExplodeString(g_sPrefRows[p], "|", parts, sizeof(parts), sizeof(parts[]));
+		strcopy(g_Prefs[p].key, sizeof(g_Prefs[].key), parts[0]);
+		strcopy(g_Prefs[p].cvar, sizeof(g_Prefs[].cvar), parts[1]);
+		strcopy(g_Prefs[p].title, sizeof(g_Prefs[].title), parts[2]);
+		strcopy(g_Prefs[p].ofItem, sizeof(g_Prefs[].ofItem), parts[3]);
+		strcopy(g_Prefs[p].ofLabel, sizeof(g_Prefs[].ofLabel), parts[4]);
+		strcopy(g_Prefs[p].oldLabel, sizeof(g_Prefs[].oldLabel), parts[5]);
+		FormatEx(desc, sizeof(desc), "%s for Mercenaries: 0 = %s only, 1 = %s only, 2 = player choice (!mercprefs), default %s, 3 = player choice, default %s, 4 = random each life.",
+			parts[2], parts[4], parts[5], parts[4], parts[5]);
+		g_cvPref[p] = CreateConVar(parts[1], "2", desc, _, true, 0.0, true, 4.0);
+		FormatEx(desc, sizeof(desc), "tf2cc_mercpref_%s", parts[0]);
+		g_hPrefCookie[p] = new Cookie(desc, "tf2cc Mercenary: preferred spawn weapon (of / old)", CookieAccess_Private);
+	}
+}
+
+/** Preference row whose OF item this is, or -1. */
+int PrefOfOFItem(const char[] item)
+{
+	for (int p = 0; p < sizeof(g_Prefs); p++)
+		if (StrEqual(g_Prefs[p].ofItem, item))
+			return p;
+	return -1;
+}
+
+/** The old item of a preference row (weapons.cfg "pref" = key); false when none. */
+bool OldItemOf(int p, char[] out, int maxlen)
+{
+	char pref[16];
+	for (int i = 0; i < g_WItem.Length; i++)
+	{
+		g_WPref.GetString(i, pref, sizeof(pref));
+		if (g_WKind.Get(i) == KIND_OLDDEFAULT && StrEqual(pref, g_Prefs[p].key))
+			return g_WItem.GetString(i, out, maxlen) > 0;
+	}
+	return false;
+}
+
+/** The item is in weapons.cfg and in the loaded schema. */
+bool ItemUsable(const char[] item)
+{
+	int i = g_WItem.FindString(item);
+	if (i < 0)
+		return false;
+	char name[64];
+	return ItemName(g_WDef.Get(i), name, sizeof(name)) && StrEqual(name, item);
+}
+
+bool PrefBothItems(int p)
+{
+	char old[64];
+	return OldItemOf(p, old, sizeof(old)) && ItemUsable(old) && ItemUsable(g_Prefs[p].ofItem);
+}
+
+/** Offered in !mercprefs: menu on, cvar 2/3, both items present. */
+bool PrefOffered(int p)
+{
+	int mode = g_cvPref[p].IntValue;
+	return g_cvMercPrefs.BoolValue && (mode == 2 || mode == 3) && PrefBothItems(p);
+}
+
+/** The player's stored choice: 1 old, 0 OF, -1 none/unknown. */
+int PrefStored(int client, int p)
+{
+	if (IsFakeClient(client))
+		return g_iPrefSim[client][p] - 1;   // bots have no cookies (sm_tf2cc_prefsim stores one for tests: 0 none, 1 of, 2 old)
+	if (!AreClientCookiesCached(client))
+		return -1;
+	char v[8];
+	g_hPrefCookie[p].Get(client, v, sizeof(v));
+	return StrEqual(v, "old") ? 1 : StrEqual(v, "of") ? 0 : -1;
+}
+
+/** Whether this life starts with the old item of row p. */
+bool ResolvePrefOld(int client, int p)
+{
+	char old[64];
+	if (!OldItemOf(p, old, sizeof(old)) || !ItemUsable(old))
+		return false;
+	if (!ItemUsable(g_Prefs[p].ofItem))
+		return true;
+	int mode = g_cvPref[p].IntValue;
+	if (mode == 0)
+		return false;
+	if (mode == 1)
+		return true;
+	if (mode == 4)
+		return GetURandomInt() % 2 == 1;
+	int stored = PrefOffered(p) ? PrefStored(client, p) : -1;   // stale choices are ignored
+	if (stored >= 0)
+		return stored == 1;
+	return mode == 3;
+}
+
+public Action Cmd_MercPrefs(int client, int args)
+{
+	if (!g_cvMercPrefs.BoolValue)
+		return Plugin_Continue;     // switched off: as if the command did not exist
+	if (client)
+		ShowPrefsMenu(client);
+	return Plugin_Handled;
+}
+
+/** Testing: what the menu would offer a player, and what his next spawn resolves to. */
+public Action Cmd_PrefsTest(int client, int args)
+{
+	char pattern[64], name[64], old[64];
+	GetCmdArg(1, pattern, sizeof(pattern));
+	int targets[MAXPLAYERS];
+	bool ml;
+	int n = ProcessTargetString(pattern, client, targets, sizeof(targets), 0, name, sizeof(name), ml);
+	for (int i = 0; i < n; i++)
+	{
+		int t = targets[i];
+		for (int p = 0; p < sizeof(g_Prefs); p++)
+		{
+			OldItemOf(p, old, sizeof(old));
+			ReplyToCommand(client, "[tf2cc] prefs %N %s: mode %d offered %d stored %d resolves %s (old item %s) this life %s inv %s",
+				t, g_Prefs[p].key, g_cvPref[p].IntValue, PrefOffered(p), PrefStored(t, p),
+				ResolvePrefOld(t, p) ? "old" : "of", old, g_bPrefLife[t][p] ? "old" : "of", g_sDefault[t][p == 0 ? 1 : 2]);
+		}
+	}
+	return Plugin_Handled;
+}
+
+void ShowPrefsMenu(int client)
+{
+	if (!g_cvMercPrefs.BoolValue)
+	{
+		PrintToChat(client, "[tf2cc] Mercenary weapon preferences are turned off on this server.");
+		return;
+	}
+	Menu menu = new Menu(Menu_Prefs);
+	menu.SetTitle("Mercenary spawn weapons\n(applies from your next spawn)");
+	char info[8], text[128];
+	int n = 0;
+	for (int p = 0; p < sizeof(g_Prefs); p++)
+	{
+		if (!PrefOffered(p))
+			continue;
+		int stored = PrefStored(client, p);
+		bool old = stored >= 0 ? stored == 1 : g_cvPref[p].IntValue == 3;
+		FormatEx(text, sizeof(text), "%s: %s%s", g_Prefs[p].title, old ? g_Prefs[p].oldLabel : g_Prefs[p].ofLabel, stored < 0 ? " (server default)" : "");
+		IntToString(p, info, sizeof(info));
+		menu.AddItem(info, text);
+		n++;
+	}
+	if (n == 0)
+	{
+		delete menu;
+		PrintToChat(client, "[tf2cc] No Mercenary weapon options are available on this server.");
+		return;
+	}
+	menu.ExitBackButton = g_bSettingsItem;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int Menu_Prefs(Menu menu, MenuAction action, int client, int item)
+{
+	if (action == MenuAction_End)
+		delete menu;
+	else if (action == MenuAction_Cancel && item == MenuCancel_ExitBack)
+		ShowCookieMenu(client);
+	else if (action == MenuAction_Select)
+	{
+		char info[8];
+		menu.GetItem(item, info, sizeof(info));
+		int p = StringToInt(info);
+		if (p >= 0 && p < sizeof(g_Prefs) && PrefOffered(p))
+		{
+			bool nowOld = PrefToggle(client, p);
+			PrintToChat(client, "[tf2cc] %s: %s from your next spawn.", g_Prefs[p].title, nowOld ? g_Prefs[p].oldLabel : g_Prefs[p].ofLabel);
+		}
+		ShowPrefsMenu(client);
+	}
+	return 0;
+}
+
+/** A menu selection: flips the shown choice and stores it; returns true when it is now "old". */
+bool PrefToggle(int client, int p)
+{
+	int stored = PrefStored(client, p);
+	bool old = stored >= 0 ? stored == 1 : g_cvPref[p].IntValue == 3;
+	if (IsFakeClient(client))
+		g_iPrefSim[client][p] = old ? 1 : 2;
+	else
+		g_hPrefCookie[p].Set(client, old ? "of" : "old");
+	return !old;
+}
+
+/** Testing with bots: sm_tf2cc_prefsim <target> <pistol|crowbar> <of|old|clear|toggle|menu>. */
+public Action Cmd_PrefSim(int client, int args)
+{
+	char pattern[64], key[16], val[16], name[64], text[160];
+	GetCmdArg(1, pattern, sizeof(pattern));
+	GetCmdArg(2, key, sizeof(key));
+	GetCmdArg(3, val, sizeof(val));
+	int targets[MAXPLAYERS];
+	bool ml;
+	int n = ProcessTargetString(pattern, client, targets, sizeof(targets), 0, name, sizeof(name), ml);
+	for (int i = 0; i < n; i++)
+	{
+		int t = targets[i];
+		if (StrEqual(val, "menu"))
+		{
+			int shown = 0;
+			for (int p = 0; p < sizeof(g_Prefs); p++)
+			{
+				if (!g_cvMercPrefs.BoolValue || !PrefOffered(p))
+					continue;
+				int stored = PrefStored(t, p);
+				bool old = stored >= 0 ? stored == 1 : g_cvPref[p].IntValue == 3;
+				FormatEx(text, sizeof(text), "%s: %s%s", g_Prefs[p].title, old ? g_Prefs[p].oldLabel : g_Prefs[p].ofLabel, stored < 0 ? " (server default)" : "");
+				ReplyToCommand(client, "[tf2cc] menu %N: %s", t, text);
+				shown++;
+			}
+			if (!g_cvMercPrefs.BoolValue)
+				ReplyToCommand(client, "[tf2cc] menu %N: (command hidden: tf2cc_mercprefs 0)", t);
+			else if (!shown)
+				ReplyToCommand(client, "[tf2cc] menu %N: No Mercenary weapon options are available on this server.", t);
+			continue;
+		}
+		for (int p = 0; p < sizeof(g_Prefs); p++)
+		{
+			if (!StrEqual(key, g_Prefs[p].key))
+				continue;
+			if (StrEqual(val, "toggle"))
+			{
+				if (PrefOffered(p))
+					PrefToggle(t, p);
+			}
+			else
+				g_iPrefSim[t][p] = StrEqual(val, "old") ? 2 : StrEqual(val, "of") ? 1 : 0;
+			ReplyToCommand(client, "[tf2cc] prefsim %N %s: stored %d offered %d resolves %s", t, key, PrefStored(t, p), PrefOffered(p), ResolvePrefOld(t, p) ? "old" : "of");
+		}
+	}
+	return Plugin_Handled;
+}
+
+public void CookieMenu_MercPrefs(int client, CookieMenuAction action, any info, char[] buffer, int maxlen)
+{
+	if (action == CookieMenuAction_DisplayOption)
+		strcopy(buffer, maxlen, "Mercenary spawn weapons");
+	else if (action == CookieMenuAction_SelectOption)
+		ShowPrefsMenu(client);
+}
+
+public void OnConfigsExecuted()
+{
+	// The !settings entry exists only when tf2cc_mercprefs is 1 when configs load (clientprefs
+	// cannot remove an entry; switched off later, the entry only says the preferences are off).
+	if (!g_bSettingsItem && g_cvMercPrefs.BoolValue)
+	{
+		SetCookieMenuItem(CookieMenu_MercPrefs, 0, "Mercenary spawn weapons");
+		g_bSettingsItem = true;
+	}
+}
+
 public void OnMarxVeeChanged(ConVar cv, const char[] oldValue, const char[] newValue)
 {
 	LoadWeapons();
@@ -775,11 +1312,38 @@ void LoadItemNames()
 	strcopy(files[0], sizeof(files[]), "scripts/items/items_game.txt");
 	strcopy(files[1], sizeof(files[]), "scripts/items/custom_items_game.txt");
 	FormatEx(files[2], sizeof(files[]), "scripts/items/%s_items_game.txt", map);
-	char id[12], name[64];
+	delete g_ItemSlot;
+	g_ItemSlot = new StringMap();
+	delete g_ItemClass;
+	g_ItemClass = new StringMap();
+	delete g_ItemBucket;
+	g_ItemBucket = new StringMap();
+	StringMap prefabSlot = new StringMap(), prefabClass = new StringMap();
+	char id[12], name[64], slot[16], prefab[128], cls[64];
 	for (int f = 0; f < sizeof(files); f++)
 	{
 		KeyValues kv = new KeyValues("items_game");
-		if (kv.ImportFromFile(files[f]) && kv.JumpToKey("items") && kv.GotoFirstSubKey())
+		if (!kv.ImportFromFile(files[f]))
+		{
+			delete kv;
+			continue;
+		}
+		if (kv.JumpToKey("prefabs") && kv.GotoFirstSubKey())
+		{
+			do
+			{
+				kv.GetSectionName(name, sizeof(name));
+				kv.GetString("item_slot", slot, sizeof(slot));
+				if (slot[0])
+					prefabSlot.SetString(name, slot);
+				kv.GetString("item_class", cls, sizeof(cls));
+				if (cls[0])
+					prefabClass.SetString(name, cls);
+			}
+			while (kv.GotoNextKey());
+			kv.Rewind();
+		}
+		if (kv.JumpToKey("items") && kv.GotoFirstSubKey())
 		{
 			do
 			{
@@ -787,35 +1351,133 @@ void LoadItemNames()
 				kv.GetString("name", name, sizeof(name));
 				if (name[0] && IsCharNumeric(id[0]))
 					g_ItemNames.SetString(id, name);
+				// Loadout slot (item_slot, else the first prefab that has one): GenerateAndWearItem
+				// replaces what the player holds in that slot (see GiveItem).
+				kv.GetString("item_slot", slot, sizeof(slot));
+				kv.GetString("item_class", cls, sizeof(cls));
+				kv.GetString("prefab", prefab, sizeof(prefab));
+				char parts[4][48];
+				int np = ExplodeString(prefab, " ", parts, sizeof(parts), sizeof(parts[]));
+				for (int k = 0; k < np && (!slot[0] || !cls[0]); k++)
+				{
+					if (!slot[0])
+						prefabSlot.GetString(parts[k], slot, sizeof(slot));
+					if (!cls[0])
+						prefabClass.GetString(parts[k], cls, sizeof(cls));
+				}
+				if (slot[0] && IsCharNumeric(id[0]))
+					g_ItemSlot.SetString(id, slot);
+				if (cls[0] && IsCharNumeric(id[0]))
+					g_ItemClass.SetString(id, cls);
+				// An item's own "bucket" is its slot for every class (CTFWeaponBase::GetSlot reads
+				// it first): the old TF2 Classic class weapons (Medic's shotgun on the Engineer
+				// shotgun class, a primary) land in that slot on the Merc too.
+				int bucket = kv.GetNum("bucket", -1);
+				if (bucket >= 0 && IsCharNumeric(id[0]))
+					g_ItemBucket.SetValue(id, bucket);
 			}
 			while (kv.GotoNextKey());
 		}
 		delete kv;
 	}
+	delete prefabSlot;
+	delete prefabClass;
+}
+
+/** The schema item_class of a definition, or "". */
+void ItemClassOf(int def, char[] out, int maxlen)
+{
+	char key[12];
+	IntToString(def, key, sizeof(key));
+	out[0] = '\0';
+	g_ItemClass.GetString(key, out, maxlen);
+}
+
+/** The loadout slot (schema item_slot) of a definition, or "" when unknown. */
+void LoadoutSlot(int def, char[] out, int maxlen)
+{
+	char key[12];
+	IntToString(def, key, sizeof(key));
+	out[0] = '\0';
+	g_ItemSlot.GetString(key, out, maxlen);
+}
+
+/** The custom/ folder the staged files are deployed to (live: custom/0tf2cc_merc; the LAN test copy:
+ *  custom/tf2cc_merc), or "" when none is found. */
+void StagedDir(char[] out, int maxlen)
+{
+	out[0] = ' ';
+	char cv[PLATFORM_MAX_PATH];
+	g_cvStagedDir.GetString(cv, sizeof(cv));
+	if (cv[0])
+	{
+		if (DirExists(cv))
+			strcopy(out, maxlen, cv);
+		return;
+	}
+	static const char candidates[][] = {"custom/0tf2cc_merc", "custom/tf2cc_merc"};
+	for (int i = 0; i < sizeof(candidates); i++)
+	{
+		if (DirExists(candidates[i]))
+		{
+			strcopy(out, maxlen, candidates[i]);
+			return;
+		}
+	}
 }
 
 void AddDownloads()
 {
-	char path[PLATFORM_MAX_PATH], line[PLATFORM_MAX_PATH];
+	char path[PLATFORM_MAX_PATH], line[PLATFORM_MAX_PATH], staged[PLATFORM_MAX_PATH], full[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, sizeof(path), CFG_DOWNLOADS);
 	File f = OpenFile(path, "r");
 	if (f == null)
 		return;
+	// Every downloads.txt line is a file staged under the tf2cc custom folder (stage_tf2c.py writes
+	// the list from the staging tree, which is copied there whole). A plain stat there is cheap;
+	// FileExists(line, true) searched every search path and VPK for each of ~1550 lines and, with
+	// the sound precache, ran past SourceMod's 8 s script watchdog on a loaded machine (test server,
+	// 2026-11-17). The valve-FS search remains only for a line that is not in the folder.
+	StagedDir(staged, sizeof(staged));
+	float t0 = GetEngineTime();
+	int added, slow, sounds, missing;
 	while (f.ReadLine(line, sizeof(line)))
 	{
 		TrimString(line);
-		if (line[0] && line[0] != '/' && FileExists(line, true))
+		if (!line[0] || line[0] == '/')
+			continue;
+		bool ok = false;
+		if (staged[0])
 		{
-			AddFileToDownloadsTable(line);
-			// Raw .wav/.mp3 paths in the schema (weapon sound_*) and in the viewmodels' sound
-			// events are not precached by TF2C's schema precache (PrecacheScriptSound only
-			// handles script names): unprecached, the shooter's own predicted shot and melee hit
-			// sounds never played. Precache every staged sound at map start.
-			if (StrContains(line, "sound/") == 0)
-				PrecacheSound(line[6], true);
+			FormatEx(full, sizeof(full), "%s/%s", staged, line);
+			ok = FileExists(full);
+		}
+		if (!ok)
+		{
+			slow++;
+			ok = FileExists(line, true);
+		}
+		if (!ok)
+		{
+			missing++;
+			continue;
+		}
+		AddFileToDownloadsTable(line);
+		added++;
+		// Raw .wav/.mp3 paths in the schema (weapon sound_*) and in the viewmodels' sound
+		// events are not precached by TF2C's schema precache (PrecacheScriptSound only
+		// handles script names): unprecached, the shooter's own predicted shot and melee hit
+		// sounds never played. Precache every staged sound at map start (registered only: the
+		// server does not need the sample data, so no preload).
+		if (StrContains(line, "sound/") == 0)
+		{
+			PrecacheSound(line[6], false);
+			sounds++;
 		}
 	}
 	delete f;
+	LogMessage("downloads: %d added (%d sounds precached), %d checked through the game file system, %d missing; folder \"%s\"; %.3f s",
+		added, sounds, slow, missing, staged, GetEngineTime() - t0);
 }
 
 void LoadVoice()
@@ -956,8 +1618,8 @@ public Action Cmd_Merc(int client, int args)
 		return Plugin_Handled;
 	}
 	g_bExplicit[client] = true;
-	SetWant(client, !g_bWant[client]);
-	PrintToChat(client, "[tf2cc] %s", g_bWant[client] ? "You will play the Mercenary." : "You will no longer play the Mercenary.");
+	if (SetWant(client, !g_bWant[client]) || !IsPlayerAlive(client))
+		PrintToChat(client, "[tf2cc] %s", g_bWant[client] ? "You will play the Mercenary." : "You will no longer play the Mercenary.");
 	if (g_bWant[client])
 		SchemaHint(client);
 	return Plugin_Handled;
@@ -972,16 +1634,17 @@ public Action Cmd_SetMerc(int client, int args)
 		ReplyToCommand(client, "Usage: sm_setmerc <target> <0|1>");
 		return Plugin_Handled;
 	}
-	char pattern[64], val[4], name[64];
+	char pattern[64], val[4], name[64], now[8];
 	GetCmdArg(1, pattern, sizeof(pattern));
 	GetCmdArg(2, val, sizeof(val));
+	GetCmdArg(3, now, sizeof(now));
 	int targets[MAXPLAYERS];
 	bool ml;
 	int n = ProcessTargetString(pattern, client, targets, sizeof(targets), 0, name, sizeof(name), ml);
 	for (int i = 0; i < n; i++)
 	{
 		g_bBotRolled[targets[i]] = g_bExplicit[targets[i]] = true;
-		SetWant(targets[i], StringToInt(val) != 0);
+		SetWant(targets[i], StringToInt(val) != 0, StrEqual(now, "now", false));
 	}
 	ReplyToCommand(client, "[tf2cc] Mercenary %s for %d player(s)", StringToInt(val) ? "on" : "off", n);
 	return Plugin_Handled;
@@ -1024,13 +1687,27 @@ public Action Timer_RespawnLine(Handle timer, DataPack dp)
 }
 
 /** Choose (or drop) the Mercenary; a living player is respawned as one. */
-void SetWant(int client, bool want)
+/**
+ * Like a stock class change: a living player inside his team's respawn room changes at once;
+ * anywhere else the change waits for his next spawn (no free respawn, heal or teleport). force:
+ * admin "now" (sm_setmerc <target> <0|1> now). Returns true when it applied at once.
+ */
+bool SetWant(int client, bool want, bool force = false)
 {
 	Step("SetWant %N %d", client, want);
+	bool was = g_bWant[client];
 	g_bWant[client] = want;
 	g_bBotRolled[client] = true;    // an explicit choice is never overwritten by the bot roll
 	if (!IsClientInGame(client) || GetClientTeam(client) < 2)
-		return;
+		return false;
+	bool changes = want ? !g_bMerc[client] : g_bMerc[client];
+	if (IsPlayerAlive(client) && changes && !force && !InRespawnRoom(client))
+	{
+		if (was != want && !IsFakeClient(client))
+			PrintToChat(client, "[tf2cc] %s", want ? "*You will become the Mercenary when you respawn.*" : "*You will stop being the Mercenary when you respawn.*");
+		Step("SetWant %N: outside the respawn room, pending until the next spawn", client);
+		return false;
+	}
 	if (want)
 	{
 		if (IsFakeClient(client))
@@ -1047,8 +1724,34 @@ void SetWant(int client, bool want)
 	}
 	else if (g_bMerc[client] && IsPlayerAlive(client))
 	{
+		RemoveBody(client);      // before the respawn deploys the new weapons
 		TF2_RespawnPlayer(client);
 	}
+	return true;
+}
+
+/** Inside one of his team's func_respawnroom volumes (the game's own test for an instant class
+ *  change is the same: PointInRespawnRoom on the player's centre). */
+bool InRespawnRoom(int client)
+{
+	float pos[3], mins[3], maxs[3], org[3];
+	GetClientAbsOrigin(client, pos);
+	pos[2] += 36.0;
+	int team = GetClientTeam(client);
+	int ent = -1;
+	while ((ent = FindEntityByClassname(ent, "func_respawnroom")) != -1)
+	{
+		int t = GetEntProp(ent, Prop_Send, "m_iTeamNum");
+		if (t != 0 && t != team)
+			continue;
+		GetEntPropVector(ent, Prop_Data, "m_vecAbsOrigin", org);
+		GetEntPropVector(ent, Prop_Send, "m_vecMins", mins);
+		GetEntPropVector(ent, Prop_Send, "m_vecMaxs", maxs);
+		if (pos[0] >= org[0] + mins[0] && pos[0] <= org[0] + maxs[0] && pos[1] >= org[1] + mins[1] && pos[1] <= org[1] + maxs[1]
+			&& pos[2] >= org[2] + mins[2] && pos[2] <= org[2] + maxs[2])
+			return true;
+	}
+	return false;
 }
 
 void ForceSoldier(int client)
@@ -1084,7 +1787,20 @@ public Action Listener_JoinClass(int client, const char[] command, int argc)
 		return Plugin_Handled;
 	}
 	if (g_bWant[client] && !IsFakeClient(client))
+	{
 		g_bWant[client] = false;
+		// The game respawns him at once inside the respawn room (or he is dead): the new class
+		// must not deploy its weapons while the Merc body item (arms) is still on him.
+		if (g_bMerc[client] && IsPlayerAlive(client) && StrEqual(arg, "soldier", false))
+		{
+			// Merc -> Soldier is the same game class: the game would not respawn him, so the
+			// switch is ours (at once in the respawn room, else at the next spawn).
+			SetWant(client, false);
+			return Plugin_Handled;
+		}
+		if (g_bMerc[client] && (!IsPlayerAlive(client) || InRespawnRoom(client)))
+			RemoveBody(client);
+	}
 	return Plugin_Continue;
 }
 
@@ -1114,7 +1830,6 @@ public int Menu_Random(Menu menu, MenuAction action, int client, int item)
 		if (merc && MercAllowed())
 		{
 			SetWant(client, true);
-			PrintToChat(client, "[tf2cc] Random: Mercenary.");
 		}
 		else
 		{
@@ -1141,10 +1856,15 @@ public void Event_Spawn(Event event, const char[] name, bool dontBroadcast)
 	// re-check the Mercenary's inventory a little later.
 	CreateTimer(0.6, Timer_Recheck, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(1.5, Timer_Recheck, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-	if (IsFakeClient(client) && !g_bBotRolled[client])
+	// Bots roll every life, as the stock tf2cc does (RollBot in its ForceRespawn pre-hook): the
+	// roll once per connection gave a Merc share that never recovered from an unlucky map (bots
+	// reconnect at every map change: 0 of 12 bots rolled Merc on ctf_2fort), and none at all after
+	// a map change whose rolls all failed. Not on our own conversion respawn (same life), never for
+	// a bot set by command (sm_setmerc), and on exempt maps the roll is simply not applied.
+	if (IsFakeClient(client) && !g_bExplicit[client] && !g_bBotConverting[client])
 	{
 		g_bBotRolled[client] = true;
-		g_bWant[client] = g_cvEnabled.BoolValue && GetURandomFloat() < g_cvBotChance.FloatValue;   // kept off-map: the next normal map applies it
+		g_bWant[client] = g_cvEnabled.BoolValue && GetURandomFloat() < g_cvBotChance.FloatValue;
 		Step("bot roll %N: %s (chance %.2f)", client, g_bWant[client] ? "Mercenary" : "no", g_cvBotChance.FloatValue);
 	}
 	if (IsFakeClient(client) && g_bWant[client] && MercAllowed())
@@ -1246,6 +1966,8 @@ public void Frame_Respawn(int userid)
 public void Event_Inventory(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client)
+		MendBottles(client);
 	if (client && GetEngineTime() - g_flOwnGive[client] > 0.25)
 		RequestFrame(Frame_Apply, GetClientUserId(client));
 }
@@ -1258,21 +1980,48 @@ public void Frame_Apply(int userid)
 		return;
 	bool fresh = g_bFreshLife[client];
 	g_bFreshLife[client] = false;
-	bool merc = g_bWant[client] && MercAllowed() && TF2_GetPlayerClass(client) == TFClass_Soldier
+	// A change of mind mid-life (!merc outside the respawn room) waits for the next spawn: a
+	// resupply mid-life keeps this life's role, as a stock class change does.
+	bool want = fresh ? g_bWant[client] : g_bMerc[client];
+	bool merc = want && MercAllowed() && TF2_GetPlayerClass(client) == TFClass_Soldier
 		&& !(IsFakeClient(client) && g_bBotSoldierLife[client]);
 	if (!merc)
 	{
-		if (g_bMerc[client])
+		bool wasMerc = g_bMerc[client];
+		// The Merc model is a custom model, which outlives the life: g_bMerc is already cleared at
+		// his death, so a Merc who died and came back as an ordinary Soldier (a Merc-rolled bot
+		// whose AI chose Soldier, a player who left the role) kept the Merc model. The player's
+		// actual model decides.
+		char cur[PLATFORM_MAX_PATH];
+		GetClientModel(client, cur, sizeof(cur));
+		bool mercModel = StrEqual(cur, MERC_MODEL, false);
+		if (wasMerc || mercModel)
 		{
 			g_bMerc[client] = false;
 			ChainsawReset(client);
 			SetVariantString("");
 			AcceptEntityInput(client, "SetCustomModel");
+			if (mercModel && !wasMerc)
+				Step("%N: Merc model cleared on a non-Merc life", client);
 		}
-		StripMercItems(client);
+		// Merc -> Soldier respawns the same class at once: the body item (arms) is removed only at
+		// the end of that frame, so the Soldier weapons deployed with the Merc arms and, with no
+		// Merc weapon left to strip, nothing redeployed them. Redeploy whenever he stops being Merc.
+		if (!StripMercItems(client) && wasMerc)
+			RequestFrame(Frame_Redeploy, GetClientUserId(client));
+		// The client keeps the Merc arms (custom hand viewmodel) on another class after a death or
+		// class change ("no matter what", across respawns): the player's attribute cache is not
+		// refreshed when the body item goes. A player attribute set and removed again changes his
+		// networked attribute list (the client clears its cache) and the weapon in hand redeploys.
+		if (g_bArmsDirty[client])
+		{
+			g_bArmsDirty[client] = false;
+			RequestFrame(Frame_ArmsRefresh, GetClientUserId(client));
+		}
 		return;
 	}
 	g_bMerc[client] = true;
+	g_bArmsDirty[client] = true;
 	if (fresh)
 	{
 		for (int s = 0; s < SLOTS; s++)
@@ -1283,8 +2032,9 @@ public void Frame_Apply(int userid)
 	ApplyMerc(client);
 }
 
-/** A non-Mercenary never keeps Merc items (e.g. carried over a class change): regenerate. */
-void StripMercItems(int client)
+/** A non-Mercenary never keeps Merc items (e.g. carried over a class change): regenerate.
+ *  True if it stripped (it then redeploys the weapon in hand itself). */
+bool StripMercItems(int client)
 {
 	int max = GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons");
 	bool found = false;
@@ -1297,15 +2047,12 @@ void StripMercItems(int client)
 	while (!found && (ent = FindEntityByClassname(ent, "tf_wearable")) != -1)
 		found = GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity") == client && ItemDef(ent) == BodyDef();
 	if (!found || GetEngineTime() - g_flStripAt[client] < 1.0)   // never loop with Regenerate
-		return;
+		return false;
 	g_flStripAt[client] = GetEngineTime();
 	Step("strip Merc items from %N", client);
 	for (int s = 0; s < SLOTS; s++)
 		g_sInv[client][s][0] = '\0';
-	ent = -1;
-	while ((ent = FindEntityByClassname(ent, "tf_wearable")) != -1)
-		if (GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity") == client && ItemDef(ent) == BodyDef())
-			RemoveEntity(ent);
+	RemoveBody(client);
 	for (int i = 0; i < max; i++)
 	{
 		int w = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", i);
@@ -1313,18 +2060,136 @@ void StripMercItems(int client)
 			RemoveWeapon(client, w);
 	}
 	RunScriptF(client, "self.Regenerate(true)");
+	// The hands of a split-arms viewmodel are chosen when a weapon deploys (UpdateViewModel reads
+	// custom_hand_viewmodel then): weapons that deployed while the body item still existed keep
+	// the Merc arms until they deploy again. Redeploy the weapon in hand once.
+	RequestFrame(Frame_Redeploy, GetClientUserId(client));
+	return true;
+}
+
+/** The body wearable (Merc health, speed and arms) off the player. */
+void RemoveBody(int client)
+{
+	int ent = -1, n = 0;
+	while ((ent = FindEntityByClassname(ent, "tf_wearable")) != -1)
+		if (GetEntPropEnt(ent, Prop_Send, "m_hOwnerEntity") == client && ItemDef(ent) == BodyDef())
+		{
+			RemoveEntity(ent);
+			n++;
+		}
+	if (n)
+		Step("body item removed from %N (%d)", client, n);
+}
+
+public void Frame_ArmsRefresh(int userid)
+{
+	int client = GetClientOfUserId(userid);
+	if (!client || !IsPlayerAlive(client) || g_bMerc[client])
+		return;
+	// The client builds the arms model as an attachment of its viewmodel entity and keeps it for
+	// as long as that entity lives: the viewmodels outlive deaths and class changes (same entity
+	// indices across lives, measured 2026-11-17), so c_merc_arms stayed on the next class (user:
+	// "no matter what"; the batch-11 attribute bump did not reach that cache). The viewmodels are
+	// removed and the player respawned once in place: Spawn creates fresh ones, the client builds
+	// fresh arms for them. (Attribute bump kept as the fallback without the respawn cvar.)
+	if (g_cvArmsRespawn.BoolValue)
+	{
+		float pos[3], ang[3];
+		GetClientAbsOrigin(client, pos);
+		GetClientEyeAngles(client, ang);
+		int n = 0;
+		for (int i = 0; i < 2; i++)
+		{
+			int vm = GetEntPropEnt(client, Prop_Send, "m_hViewModel", i);
+			if (vm > MaxClients && IsValidEntity(vm))
+			{
+				SetEntPropEnt(client, Prop_Send, "m_hViewModel", -1, i);
+				RemoveEntity(vm);
+				n++;
+			}
+		}
+		g_bArmsRespawn[client] = true;
+		TF2_RespawnPlayer(client);
+		TeleportEntity(client, pos, ang, NULL_VECTOR);
+		g_bArmsRespawn[client] = false;
+		int vm0 = GetEntPropEnt(client, Prop_Send, "m_hViewModel", 0);
+		Step("arms refresh for %N (was Merc): %d viewmodel(s) removed, respawned, new viewmodel %d", client, n, vm0);
+		return;
+	}
+	if (GetFeatureStatus(FeatureType_Native, "TF2Attrib_SetByName") == FeatureStatus_Available)
+	{
+		TF2Attrib_SetByName(client, "voice pitch scale", 1.0);
+		RequestFrame(Frame_ArmsRefresh2, userid);
+	}
+	else
+		Frame_Redeploy(userid);
+	Step("arms refresh for %N (was Merc)", client);
+}
+
+public void Frame_ArmsRefresh2(int userid)
+{
+	int client = GetClientOfUserId(userid);
+	if (!client)
+		return;
+	TF2Attrib_RemoveByName(client, "voice pitch scale");
+	Frame_Redeploy(userid);
+}
+
+/** Holster and redeploy the weapon in hand (through another slot's weapon, back next frame). */
+public void Frame_Redeploy(int userid)
+{
+	int client = GetClientOfUserId(userid);
+	if (!client || !IsPlayerAlive(client) || g_bMerc[client])
+		return;
+	int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	int other = -1;
+	for (int s = 0; s < SLOTS && other <= MaxClients; s++)
+	{
+		int w = GetPlayerWeaponSlot(client, s);
+		if (w > MaxClients && w != active)
+			other = w;
+	}
+	if (active <= MaxClients || other <= MaxClients)
+		return;
+	SwitchTo(client, other);
+	DataPack dp = new DataPack();
+	dp.WriteCell(userid);
+	dp.WriteCell(EntIndexToEntRef(active));
+	RequestFrame(Frame_RedeployBack, dp);
+}
+
+public void Frame_RedeployBack(DataPack dp)
+{
+	dp.Reset();
+	int client = GetClientOfUserId(dp.ReadCell());
+	int w = EntRefToEntIndex(dp.ReadCell());
+	delete dp;
+	if (client && IsPlayerAlive(client) && w > MaxClients)
+	{
+		SwitchTo(client, w);
+		Step("redeployed %N's weapon %d (class arms)", client, w);
+	}
 }
 
 void DefaultInventory(int client)
 {
 	char item[64];
+	for (int p = 0; p < sizeof(g_Prefs); p++)
+		g_bPrefLife[client][p] = ResolvePrefOld(client, p);
+	for (int s = 0; s < SLOTS; s++)
+		g_sDefault[client][s][0] = '\0';
 	for (int i = 0; i < g_WItem.Length; i++)
 	{
-		if (!g_WDefault.Get(i))
+		if (!g_WDefault.Get(i) || g_WKind.Get(i) == KIND_OLDDEFAULT)
 			continue;
 		int s = g_WSlot.Get(i);
 		g_WItem.GetString(i, item, sizeof(item));
+		int p = PrefOfOFItem(item);
+		if (p >= 0 && g_bPrefLife[client][p])
+			OldItemOf(p, item, sizeof(item));
+		strcopy(g_sDefault[client][s], sizeof(g_sDefault[][]), item);
 		strcopy(g_sInv[client][s], sizeof(g_sInv[][]), item);
+		Step("default %N slot %d: %s", client, s, item);
 	}
 }
 
@@ -1358,7 +2223,7 @@ void ApplyMerc(int client)
 				RemoveWeapon(client, w);
 			}
 			Step("give slot %d %s", s, g_sInv[client][s]);
-			GiveItem(client, g_sInv[client][s]);
+			GiveItem(client, g_sInv[client][s], s);
 		}
 		else if (w > MaxClients)
 		{
@@ -1581,9 +2446,40 @@ int DropWeapon(int client, int weapon, int slot, bool death)
 	ScaleVector(fwd, death ? 60.0 : 150.0);
 	vel = fwd;
 	vel[2] += 120.0;
-	// Team-coloured weapons keep the holder's skin (BLU umbrella, australiums...).
+	// Team-coloured weapons keep the holder's colour. The weapon entity's m_nSkin is only set for
+	// some stock items (BLU umbrella, australiums...); TF2C weapons otherwise get their team skin
+	// on the client (GetTeamSkin: RED/BLU/GRN/YLW = 0/1/2/3), so the server's skin is 0 for the
+	// Merc's crowbar, frag grenade etc. A model with a family for the holder's team uses it.
 	int skin = GetEntProp(weapon, Prop_Send, "m_nSkin");
+	int team = GetClientTeam(client) - 2;
+	if (skin == 0 && team > 0 && team < ModelSkinFamilies(model))
+		skin = team;
 	return SpawnPickup(d, model, pos, vel, skin);
+}
+
+StringMap g_ModelFamilies;
+
+/** Number of skin families of a model (studiohdr_t numskinfamilies), read once through the game's
+ *  file system (custom/, VPKs). 1 when unreadable. */
+int ModelSkinFamilies(const char[] model)
+{
+	if (g_ModelFamilies == null)
+		g_ModelFamilies = new StringMap();
+	int n;
+	if (g_ModelFamilies.GetValue(model, n))
+		return n;
+	n = 1;
+	File f = OpenFile(model, "rb", true);
+	if (f != null)
+	{
+		int v;
+		if (f.Seek(224, SEEK_SET) && f.ReadInt32(v) && v > 0 && v < 64)
+			n = v;
+		delete f;
+	}
+	g_ModelFamilies.SetValue(model, n);
+	Step("model %s: %d skin families", model, n);
+	return n;
 }
 
 public Action Timer_PickupScan(Handle timer)
@@ -1616,6 +2512,28 @@ public Action Timer_PickupScan(Handle timer)
 			g_Pickups.GetArray(key, d, sizeof(d));
 			if (GetGameTime() < d.readyAt && GetClientUserId(c) == d.dropper)
 				continue;
+			int sg = ShotgunPickup(c, d);
+			if (sg == 2)
+			{
+				// holding a Merc shotgun: any regular shotgun is the same weapon (ammo only)
+				if (RefillShotgun(c))
+				{
+					g_Pickups.Remove(key);
+					RemoveEntity(prop);
+					EmitSoundToAll(PICKUP_SOUND, c);
+				}
+				continue;
+			}
+			// A second matching pistol makes the akimbo on touch (OF CheckHasAkimbo), a third
+			// refills it; with the akimbo's ammo full the pistol stays on the ground.
+			int akRow, ak = AkimboCheck(c, d.def, akRow);
+			if (ak == AKIMBO_FULL)
+				continue;
+			if (ak != AKIMBO_NONE)
+			{
+				TakePickup(c, prop, key, d, false);
+				break;
+			}
 			int cur = GetPlayerWeaponSlot(c, d.slot);
 			if (cur > MaxClients && ItemDef(cur) == d.def)
 				continue;   // already has it
@@ -1641,9 +2559,111 @@ public Action Timer_PickupScan(Handle timer)
 
 void TakePickup(int client, int prop, const char[] key, PickupData d, bool pressed)
 {
+	int akRow, ak = AkimboCheck(client, d.def, akRow);
+	if (ak == AKIMBO_FULL || (ak == AKIMBO_REFILL && !AkimboRefill(client, akRow)))
+	{
+		if (pressed)
+			PrintHintText(client, "Your Akimbo Pistols are fully loaded");
+		return;     // the pistol stays on the ground
+	}
 	g_Pickups.Remove(key);
 	RemoveEntity(prop);
+	if (ak == AKIMBO_REFILL)
+	{
+		Step("take %N: def %d refills his akimbo (row %d)", client, d.def, akRow);
+		EmitSoundToAll(PICKUP_SOUND, client);
+		return;
+	}
 	TakeWeapon(client, d, pressed);
+}
+
+/* Akimbo pistols: weapons.cfg "akimbo_from" lists the single pistols (defindexes) two of which make
+ * that akimbo item (tools/tf2c/gen_akimbo_stock.py: the stock TF2C pistols 22, 23 and 30200 make
+ * tf2cc_merc_akimbo_stock). Holding one of them in the akimbo's slot and picking up another (any of
+ * the list) gives the akimbo; picking one up while holding the akimbo refills its reserve. The
+ * akimbo itself is an ordinary Merc weapon: it drops whole (death, drop command) and the slot gets
+ * its default weapon back. */
+void AkimboFrom(const char[] list, int row)
+{
+	char defs[16][12];
+	int n = ExplodeString(list, " ", defs, sizeof(defs), sizeof(defs[]));
+	for (int i = 0; i < n; i++)
+		if (defs[i][0])
+			g_AkimboOf.SetValue(defs[i], row);
+}
+
+/** What picking up item def does for him (row: the akimbo's weapons.cfg row). */
+int AkimboCheck(int client, int def, int &row)
+{
+	char key[12];
+	IntToString(def, key, sizeof(key));
+	if (g_AkimboOf == null || !g_AkimboOf.GetValue(key, row))
+		return AKIMBO_NONE;
+	int cur = GetPlayerWeaponSlot(client, g_WSlot.Get(row));
+	if (cur <= MaxClients)
+		return AKIMBO_NONE;
+	int curDef = ItemDef(cur), other;
+	if (curDef == g_WDef.Get(row))
+		return AkimboReserveFull(client, cur) ? AKIMBO_FULL : AKIMBO_REFILL;
+	IntToString(curDef, key, sizeof(key));
+	return g_AkimboOf.GetValue(key, other) && other == row ? AKIMBO_MAKE : AKIMBO_NONE;
+}
+
+bool AkimboReserveFull(int client, int weapon)
+{
+	if (!HasEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType"))
+		return true;
+	int type = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
+	if (type <= 0)
+		return true;
+	// GivePlayerAmmo reports what the reserve could take; give it, then take it back.
+	int have = GetEntProp(client, Prop_Send, "m_iAmmo", _, type);
+	int took = GivePlayerAmmo(client, 1000, type, true);
+	SetEntProp(client, Prop_Send, "m_iAmmo", have, _, type);
+	return took <= 0;
+}
+
+bool AkimboRefill(int client, int row)
+{
+	int w = GetPlayerWeaponSlot(client, g_WSlot.Get(row));
+	if (w <= MaxClients || !HasEntProp(w, Prop_Send, "m_iPrimaryAmmoType"))
+		return false;
+	int type = GetEntProp(w, Prop_Send, "m_iPrimaryAmmoType");
+	return type > 0 && GivePlayerAmmo(client, 1000, type, true) > 0;
+}
+
+/** Two matching pistols -> the akimbo: his pistol is its other half (removed, not dropped). */
+void AkimboMake(int client, int row, int pickedDef)
+{
+	int slot = g_WSlot.Get(row), def = g_WDef.Get(row);
+	int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	int activeSlot = SlotOfWeapon(client, active);
+	int cur = GetPlayerWeaponSlot(client, slot);
+	int had = cur > MaxClients ? ItemDef(cur) : -1;
+	char item[64];
+	g_WItem.GetString(row, item, sizeof(item));
+	if (cur > MaxClients)
+		RemoveWeapon(client, cur);
+	GiveItem(client, item, slot);
+	int fresh = FindNewestWeaponByDef(client, def);
+	strcopy(g_sInv[client][slot], sizeof(g_sInv[][]), item);
+	if (fresh > MaxClients && HasEntProp(fresh, Prop_Send, "m_iPrimaryAmmoType"))
+	{
+		int type = GetEntProp(fresh, Prop_Send, "m_iPrimaryAmmoType");
+		if (type > 0)
+			GivePlayerAmmo(client, 1000, type, true);
+	}
+	bool draw = activeSlot < 0 || activeSlot == slot;
+	if (!draw && g_cvAutoSwitch.BoolValue && !IsFakeClient(client) && !(GetClientButtons(client) & IN_ATTACK))
+		draw = true;
+	Step("take %N: def %d + held def %d -> akimbo %s (def %d, ent %d) slot %d -> %s", client, pickedDef, had, item, def, fresh, slot, draw ? "draw" : "keep");
+	if (draw)
+		SwitchTo(client, fresh);
+	else
+		KeepInHand(client, active, activeSlot);
+	EmitSoundToAll(PICKUP_SOUND, client);
+	if (!IsFakeClient(client))
+		PrintCenterText(client, "Picked up a second Pistol: Akimbo Pistols");
 }
 
 /**
@@ -1652,8 +2672,125 @@ void TakePickup(int client, int prop, const char[] key, PickupData d, bool press
  * were empty; tf2cc_pickup_autoswitch 1 draws every pickup like OF's of_autoswitchweapons
  * (not while attacking; bots never, as in OF).
  */
+/* ------------------------------------------------------------------ */
+/* Shotguns (user 2026-11-16)                                         */
+/* ------------------------------------------------------------------ */
+/* A regular stock shotgun a Merc picks up (Engineer 9, Soldier 10, Heavy 11, Pyro 12 - its only
+ * attribute is its taunt - and the old-class Medic's Shotgun 30304) becomes one of his two
+ * secondary shotguns, the OF one (tf2cc_merc_shotgun) or the presplit one (tf2cc_merc_shotgun_4rdm),
+ * weighted by their pack weights. The two differ only in viewmodel animations, so a Merc holding
+ * either treats every one of these pickups as the same weapon: it only refills his shotgun's
+ * reserve (taken when it added ammo, left lying when he was full). Not included: the Twin Barrel
+ * (2013, own class and stats), the beta 4 Super Shotgun, the Poacher's Pride, the Rescue Ranger. */
+static const int STOCK_SHOTGUNS[] = { 9, 10, 11, 12, 30304 };
+
+bool IsMercShotgunRow(int i)
+{
+	if (i < 0)
+		return false;
+	char item[64];
+	g_WItem.GetString(i, item, sizeof(item));
+	return StrEqual(item, "tf2cc_merc_shotgun") || StrEqual(item, "tf2cc_merc_shotgun_4rdm");
+}
+
+int HeldMercShotgun(int client)
+{
+	for (int i = 0; i < g_WDef.Length; i++)
+	{
+		if (!IsMercShotgunRow(i))
+			continue;
+		int w = FindWeaponByDef(client, g_WDef.Get(i));
+		if (w > MaxClients)
+			return w;
+	}
+	return -1;
+}
+
+/** 0: not one of these shotguns; 1: d now names the Merc shotgun he gets; 2: he holds one already. */
+int ShotgunPickup(int client, PickupData d)
+{
+	bool isStock = false;
+	for (int k = 0; k < sizeof(STOCK_SHOTGUNS); k++)
+		if (d.def == STOCK_SHOTGUNS[k])
+			isStock = true;
+	if (!isStock && !IsMercShotgunRow(MercWeaponIndex(d.def)))
+		return 0;
+	if (HeldMercShotgun(client) > MaxClients)
+		return 2;
+	if (!isStock)
+		return 1;
+	float total = 0.0;
+	for (int i = 0; i < g_WDef.Length; i++)
+		if (IsMercShotgunRow(i))
+			total += view_as<float>(g_WWeight.Get(i));
+	float roll = GetURandomFloat() * total;
+	int pick = -1;
+	for (int i = 0; i < g_WDef.Length; i++)
+	{
+		if (!IsMercShotgunRow(i))
+			continue;
+		pick = i;
+		roll -= view_as<float>(g_WWeight.Get(i));
+		if (roll <= 0.0)
+			break;
+	}
+	if (pick < 0)
+		return 0;
+	int from = d.def;
+	d.def = g_WDef.Get(pick);
+	d.slot = g_WSlot.Get(pick);
+	g_WItem.GetString(pick, d.item, sizeof(d.item));
+	Step("shotgun %N: stock def %d -> %s", client, from, d.item);
+	return 1;
+}
+
+/** Fill the reserve of the Merc shotgun he holds; true when it added ammo. */
+bool RefillShotgun(int client)
+{
+	int w = HeldMercShotgun(client);
+	if (w <= MaxClients || !HasEntProp(w, Prop_Send, "m_iPrimaryAmmoType"))
+		return false;
+	int type = GetEntProp(w, Prop_Send, "m_iPrimaryAmmoType");
+	if (type <= 0)
+		return false;
+	int before = GetEntProp(client, Prop_Send, "m_iAmmo", _, type);
+	GivePlayerAmmo(client, 1000, type, true);
+	int after = GetEntProp(client, Prop_Send, "m_iAmmo", _, type);
+	Step("shotgun %N: same weapon, reserve %d -> %d", client, before, after);
+	return after > before;
+}
+
 void TakeWeapon(int client, PickupData d, bool pressed)
 {
+	if (ShotgunPickup(client, d) == 2)
+	{
+		RefillShotgun(client);         // USE on a shotgun while holding one: the same weapon
+		EmitSoundToAll(PICKUP_SOUND, client);
+		return;
+	}
+	int akRow, ak = AkimboCheck(client, d.def, akRow);
+	if (ak == AKIMBO_MAKE)
+	{
+		AkimboMake(client, akRow, d.def);
+		return;
+	}
+	if (ak != AKIMBO_NONE)
+	{
+		// sm_tf2cc_givemerc (pickups refill in TakePickup)
+		Step("take %N: def %d -> akimbo refill %s", client, d.def, AkimboRefill(client, akRow) ? "done" : "(full)");
+		return;
+	}
+	char ck[12];
+	IntToString(d.def, ck, sizeof(ck));
+	int copyRow;
+	if (g_CopyOf.GetValue(ck, copyRow))
+	{
+		// A TF2-style April Fools weapon: the Merc copy (his arms; see gen_oldmerc.py).
+		Step("take %N: def %d -> Merc copy row %d", client, d.def, copyRow);
+		d.def = g_WDef.Get(copyRow);
+		d.slot = g_WSlot.Get(copyRow);
+		g_WItem.GetString(copyRow, d.item, sizeof(d.item));
+	}
 	int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	int activeSlot = SlotOfWeapon(client, active);
 	// Merc items have a known slot. A stock item is given first and then placed by the slot
@@ -1665,7 +2802,7 @@ void TakeWeapon(int client, PickupData d, bool pressed)
 		DropWeapon(client, cur, d.slot, false);
 	if (cur > MaxClients)
 		RemoveWeapon(client, cur);
-	GiveItem(client, d.item);
+	GiveItem(client, d.item, d.slot);
 	int fresh = FindNewestWeaponByDef(client, d.def);
 	if (!known && fresh > MaxClients)
 	{
@@ -1691,6 +2828,15 @@ void TakeWeapon(int client, PickupData d, bool pressed)
 		}
 	}
 	strcopy(g_sInv[client][d.slot], sizeof(g_sInv[][]), d.item);
+	// A picked-up weapon comes with its ammo (as in OF): its reserve is filled to the maximum.
+	// Without it a weapon whose ammo type the Merc had used up (a Twin Barrel on the pistol's
+	// emptied secondary reserve, a clip-1 Super Shotgun after its shot) could not be selected.
+	if (fresh > MaxClients && HasEntProp(fresh, Prop_Send, "m_iPrimaryAmmoType"))
+	{
+		int type = GetEntProp(fresh, Prop_Send, "m_iPrimaryAmmoType");
+		if (type > 0)
+			GivePlayerAmmo(client, 1000, type, true);
+	}
 	bool draw = activeSlot < 0 || activeSlot == d.slot;
 	if (!draw && g_cvAutoSwitch.BoolValue && !IsFakeClient(client) && !(GetClientButtons(client) & IN_ATTACK))
 		draw = true;
@@ -1913,7 +3059,6 @@ float g_flCsNext[MAXPLAYERS + 1], g_flCsNextSound[MAXPLAYERS + 1];
 float g_flCsChargeEnd[MAXPLAYERS + 1], g_flCsChargeStart[MAXPLAYERS + 1];
 bool g_bCsDing[MAXPLAYERS + 1], g_bCsSpeedAttr[MAXPLAYERS + 1];
 char g_sCsFireSound[MAXPLAYERS + 1][48];
-static const char CS_DEMO_SCREAM[][] = { "weapons/demo_charge_windup1.wav", "weapons/demo_charge_windup2.wav", "weapons/demo_charge_windup3.wav" };
 
 void ChainsawInit()
 {
@@ -2219,10 +3364,6 @@ bool ChainsawChargeTick(int client, float now, bool holding = true)
 	if (HasEntProp(client, Prop_Send, "m_flChargeMeter"))
 		SetEntPropFloat(client, Prop_Send, "m_flChargeMeter", 100.0);
 	ChargeSpeed(client);
-	// The shield-charge condition makes the clients yell "DemoCharge.Charging": stop it.
-	if (now - g_flCsChargeStart[client] < 0.3)
-		for (int i = 0; i < sizeof(CS_DEMO_SCREAM); i++)
-			StopSound(client, SNDCHAN_STATIC, CS_DEMO_SCREAM[i]);
 	return true;
 }
 
@@ -2279,18 +3420,6 @@ void PlayViewSequence(int client, int weapon, const char[] sequence, float rate,
 	if (HasEntProp(weapon, Prop_Data, "m_flTimeWeaponIdle"))
 		SetEntPropFloat(weapon, Prop_Data, "m_flTimeWeaponIdle", GetGameTime() + hold);
 	Step("chainsaw vm %s (seq %d, rate %.2f)", sequence, seq, rate);
-}
-
-/** OF's charge plays only Chainsaw.Charge: the stock charge whoosh/crit sounds are dropped. */
-public Action Hook_ChainsawSounds(int clients[MAXPLAYERS], int &numClients, char sample[PLATFORM_MAX_PATH],
-	int &entity, int &channel, float &volume, int &level, int &pitch, int &flags,
-	char soundEntry[PLATFORM_MAX_PATH], int &seed)
-{
-	if (entity < 1 || entity > MaxClients)
-		return Plugin_Continue;
-	if (StrContains(sample, "demo_charge_windup") != -1 || StrContains(sample, "weapon_crit_charged_o") != -1)
-		return (g_flCsChargeEnd[entity] > 0.0 && GetGameTime() <= g_flCsChargeEnd[entity] + 0.5) ? Plugin_Stop : Plugin_Continue;
-	return Plugin_Continue;
 }
 
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon)
@@ -2409,9 +3538,119 @@ void UpdateLightning(int client, int buttons)
 	TE_SendToAll();
 }
 
+/*
+ * Railgun rail (OF TracerEffect railgun_tracer01, an OF particle TF2C does not have; the
+ * revolver base draws its pistol tracer only now and then): every shot draws a team-coloured
+ * rail from the muzzle to the impact point, seen by everyone. Each shot is the weapon's own
+ * "Fire Bullets" temp entity (shooter, origin, angles), so the rail follows the real shot.
+ */
+#define RAILGUN_ITEM "tf2cc_merc_railgun"
+
+public Action TE_FireBullets(const char[] te_name, const int[] players, int numClients, float delay)
+{
+	int client = TE_ReadNum("m_iPlayer") + 1;
+	if (!IsMerc(client) || !IsItem(GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"), RAILGUN_ITEM))
+		return Plugin_Continue;
+	float org[3];
+	TE_ReadVector("m_vecOrigin", org);
+	DataPack dp = new DataPack();
+	dp.WriteCell(GetClientUserId(client));
+	dp.WriteFloat(org[0]);
+	dp.WriteFloat(org[1]);
+	dp.WriteFloat(org[2]);
+	dp.WriteFloat(TE_ReadFloat("m_vecAngles[0]"));
+	dp.WriteFloat(TE_ReadFloat("m_vecAngles[1]"));
+	RequestFrame(Frame_Rail, dp);      // no temp entity may be started inside a temp entity hook
+	return Plugin_Continue;
+}
+
+public void Frame_Rail(DataPack dp)
+{
+	dp.Reset();
+	int client = GetClientOfUserId(dp.ReadCell());
+	float eye[3], ang[3];
+	eye[0] = dp.ReadFloat();
+	eye[1] = dp.ReadFloat();
+	eye[2] = dp.ReadFloat();
+	ang[0] = dp.ReadFloat();
+	ang[1] = dp.ReadFloat();
+	delete dp;
+	if (!client || !IsClientInGame(client))
+		return;
+	float fwd[3], right[3], up[3], start[3], end[3];
+	GetAngleVectors(ang, fwd, right, up);
+	for (int k = 0; k < 3; k++)
+	{
+		start[k] = eye[k] + fwd[k] * 30.0 + right[k] * 8.0 - up[k] * 9.0;   // about the muzzle
+		end[k] = eye[k] + fwd[k] * 16384.0;                                  // OF Range 16384
+	}
+	Handle tr = TR_TraceRayFilterEx(eye, end, MASK_SHOT, RayType_EndPoint, Filter_NotSelf, client);
+	TR_GetEndPosition(end, tr);
+	int hit = TR_GetEntityIndex(tr);
+	delete tr;
+	int color[4];
+	int team = GetClientTeam(client);
+	switch (team)
+	{
+		case 2: color = { 255, 70, 50, 255 };
+		case 3: color = { 60, 130, 255, 255 };
+		case 4: color = { 60, 255, 80, 255 };
+		case 5: color = { 255, 215, 40, 255 };
+		default: color = { 200, 200, 255, 255 };
+	}
+	TE_SetupBeamPoints(start, end, g_iBeamSprite, 0, 0, 0, 0.6, 4.0, 1.5, 0, 0.0, color, 0);
+	TE_SendToAll();
+	TE_SetupBeamPoints(start, end, g_iBeamSprite, 0, 0, 0, 0.35, 1.5, 0.6, 0, 0.0, { 255, 255, 255, 220 }, 0);
+	TE_SendToAll();
+	Step("railgun %N: rail team %d colour %d %d %d, %.0f u to %.0f %.0f %.0f (hit %d)", client, team, color[0], color[1], color[2],
+		GetVectorDistance(eye, end), end[0], end[1], end[2], hit);
+}
+
 /** OF Merc jump vocal ("Mercenary.Jumpsound": volume 0.6, 95 dB, 0.5 s gate) on each ground jump. */
+/** Umbrella / Derby Cane alt-fire boost (picked up from a Civilian): 5205 boosts the aimed teammate
+ *  natively from any class, but its TLK_CIV_BOOST lines exist only for the Civilian, so a Merc said
+ *  nothing. The umbrella's m_flNextBoostAttack moves forward only when a boost lands (not on a whiff):
+ *  that is the Merc's cue for his "Go go go" (_go0) line, under the usual 1.5 s speech gap. */
+void CheckCivBoost(int client)
+{
+	if (!g_bMerc[client] || !IsPlayerAlive(client))
+		return;
+	int w = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	if (w <= MaxClients || !IsValidEntity(w) || !HasEntProp(w, Prop_Send, "m_flNextBoostAttack"))
+		return;
+	float next = GetEntPropFloat(w, Prop_Send, "m_flNextBoostAttack");
+	if (w != g_iBoostWeapon[client])
+	{
+		g_iBoostWeapon[client] = w;
+		g_flBoostNext[client] = next;
+		return;
+	}
+	float last = g_flBoostNext[client];
+	g_flBoostNext[client] = next;
+	float now = GetGameTime();
+	if (next <= last + 0.1 || next <= now)
+		return;
+	Step("civ boost by %N (next boost %.1f)", client, next);
+	if (now < g_flNextSpeak[client])
+		return;
+	if (Speak(client, "_go0"))
+		g_flNextSpeak[client] = now + 1.5;
+}
+
 public void OnPlayerRunCmdPost(int client, int buttons, int impulse, const float vel[3], const float angles[3], int weapon, int subtype, int cmdnum, int tickcount, int seed, const int mouse[2])
 {
+	CheckCivBoost(client);
+	if (g_Broken != null && g_Broken.Size > 0 && IsMerc(client))
+	{
+		// the weapon in hand changed (any way: switch command, pickup, script): the viewmodel's
+		// body follows it one frame later, once the deploy has set the viewmodel's model
+		int act = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+		if (act != g_iBodyActive[client])
+		{
+			g_iBodyActive[client] = act;
+			RequestFrame(Frame_ViewBody, GetClientUserId(client));
+		}
+	}
 	UpdateLightning(client, buttons);
 	if (!g_bWasOnGround[client] || !(buttons & IN_JUMP) || !IsMerc(client) || (GetEntityFlags(client) & FL_ONGROUND))
 		return;
@@ -2445,6 +3684,55 @@ public Action Hook_PlayerDamage(int victim, int &attacker, int &inflictor, float
 	return Plugin_Continue;
 }
 
+/* Railgun headshots. On tf_weapon_revolver the railgun had "revolver use hit locations" (the
+ * Ambassador's: a head hit is a critical hit, death notice "headshot"); on tf_weapon_shotgun_primary
+ * (a primary class, user 2026-11-17) that attribute does nothing, so the trace's hitgroup decides:
+ * HITGROUP_HEAD (1) -> DMG_CRIT (x3, crit effects) and TF_CUSTOM_HEADSHOT (1) on that hit. */
+#define RAILGUN_DEF_ITEM "tf2cc_merc_railgun"
+#define HITGROUP_HEAD 1
+#define TF_CUSTOM_HEADSHOT 1
+int g_iRailCustom[MAXPLAYERS + 1];        // TF_CUSTOM_HEADSHOT for the next death notice (Event_DeathPre)
+float g_flRailCustomAt[MAXPLAYERS + 1];
+
+bool IsRailgun(int weapon)
+{
+	if (weapon <= MaxClients || !IsValidEntity(weapon))
+		return false;
+	int i = MercWeaponIndex(ItemDef(weapon));
+	if (i < 0)
+		return false;
+	char item[64];
+	g_WItem.GetString(i, item, sizeof(item));
+	return StrEqual(item, RAILGUN_DEF_ITEM);
+}
+
+public Action Hook_RailDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
+{
+	if (attacker < 1 || attacker > MaxClients || attacker == victim || !IsClientInGame(attacker))
+		return Plugin_Continue;
+	if (!IsRailgun(weapon) && !IsRailgun(inflictor) && !IsRailgun(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")))
+		return Plugin_Continue;
+	// SDKHook_TraceAttack does not fire for players on 5205 (measured): the hit group comes from a
+	// trace from the eyes through the bullet's impact point (damagePosition, spread included).
+	float eye[3], dir[3], end[3];
+	GetClientEyePosition(attacker, eye);
+	SubtractVectors(damagePosition, eye, dir);
+	NormalizeVector(dir, dir);
+	ScaleVector(dir, GetVectorDistance(eye, damagePosition) + 16.0);
+	AddVectors(eye, dir, end);
+	Handle tr = TR_TraceRayFilterEx(eye, end, MASK_SHOT, RayType_EndPoint, Filter_NotSelf, attacker);
+	int hit = TR_GetEntityIndex(tr), group = TR_GetHitGroup(tr);
+	delete tr;
+	Step("railgun hit %N -> %N: trace entity %d hitgroup %d, %.1f", attacker, victim, hit, group, damage);
+	if (hit != victim || group != HITGROUP_HEAD)
+		return Plugin_Continue;
+	damagetype |= DMG_CRIT;
+	g_iRailCustom[victim] = TF_CUSTOM_HEADSHOT;     // damagecustom is read-only here: the death event gets it
+	g_flRailCustomAt[victim] = GetGameTime();
+	Step("railgun headshot: %N -> %N, %.1f (crit)", attacker, victim, damage);
+	return Plugin_Changed;
+}
+
 /* ------------------------------------------------------------------ */
 /* Ammo packs                                                         */
 /* ------------------------------------------------------------------ */
@@ -2465,6 +3753,11 @@ public void OnEntityCreated(int entity, const char[] classname)
 	else if (StrEqual(classname, "tf_projectile_rocket"))
 	{
 		SDKHook(entity, SDKHook_SpawnPost, Hook_RocketSpawned);
+	}
+	else if (StrEqual(classname, "tf_projectile_pipe"))
+	{
+		g_bDynPipe[entity] = false;
+		SDKHook(entity, SDKHook_SpawnPost, Hook_PipeSpawned);
 	}
 	else if (StrEqual(classname, "tf_ammo_pack"))
 	{
@@ -2488,6 +3781,13 @@ public void OnEntityCreated(int entity, const char[] classname)
 #define BOMBLET_TIMER 1.0        // OF BombletTimer
 #define BOMBLET_TIMER_RANDOM 1.0 // OF adds 0-1 s
 #define BOMBLET_POLL 0.1   // SourceMod timers run at 0.1 s at best
+#define BOMB_GIB 0
+#define BOMB_DYNAMITE 1
+#define DYNAMITE_ITEM "tf2cc_merc_dynamite"
+#define FRAG_ITEM "tf2cc_merc_frag"
+// Dynamite (OF tf_weapon_dynamite_bundle, the stock-TF2 tf2cc bomblets_dynamite): when the
+// bundle explodes it scatters 3 bomblets (70 damage, radius 124) thrown like the GIB's, which
+// bounce (no impact detonation, OF BombletImpact 0) and explode after 1 s + 0-1 s.
 bool g_bGibRocket[2049];
 float g_vGibNormal[2049][3];
 bool g_bGibNormal[2049];
@@ -2538,6 +3838,49 @@ void ParticleOn(int entity, const char[] name, const float pos[3])
 	TE_SendToAll();
 }
 
+/** The item that fired a projectile (m_hLauncher / m_hOriginalLauncher), or -1. */
+int ProjectileLauncher(int proj)
+{
+	if (HasEntProp(proj, Prop_Send, "m_hLauncher"))
+	{
+		int l = GetEntPropEnt(proj, Prop_Send, "m_hLauncher");
+		if (l > MaxClients)
+			return l;
+	}
+	if (HasEntProp(proj, Prop_Send, "m_hOriginalLauncher"))
+		return GetEntPropEnt(proj, Prop_Send, "m_hOriginalLauncher");
+	return -1;
+}
+
+bool IsItem(int weapon, const char[] item)
+{
+	int i = g_WItem.FindString(item);
+	return weapon > MaxClients && i >= 0 && ItemDef(weapon) == g_WDef.Get(i);
+}
+
+public void Hook_PipeSpawned(int entity)
+{
+	RequestFrame(Frame_CheckPipe, EntIndexToEntRef(entity));
+}
+
+public void Frame_CheckPipe(int ref)
+{
+	int pipe = EntRefToEntIndex(ref);
+	if (pipe <= MaxClients || pipe >= sizeof(g_bDynPipe))
+		return;
+	int launcher = ProjectileLauncher(pipe);
+	g_bDynPipe[pipe] = IsItem(launcher, DYNAMITE_ITEM);
+	g_bDynBoom[pipe] = false;
+	if (IsItem(launcher, FRAG_ITEM))
+	{
+		// The frag grenade's model has RED/BLU/GRN/YLW skins 0-3 (tools/tf2c/oldmerc_extract.py).
+		int skin = TeamSkin(GetEntProp(pipe, Prop_Send, "m_iTeamNum"));
+		if (GetEntProp(pipe, Prop_Send, "m_nSkin") != skin)
+			SetEntProp(pipe, Prop_Send, "m_nSkin", skin);
+		Step("frag %d: team %d skin %d", pipe, GetEntProp(pipe, Prop_Send, "m_iTeamNum"), skin);
+	}
+}
+
 public void Hook_RocketSpawned(int entity)
 {
 	RequestFrame(Frame_CheckRocket, EntIndexToEntRef(entity));
@@ -2585,23 +3928,57 @@ public Action TE_GibExplosion(const char[] te_name, const int[] players, int num
 			TE_WriteNum("m_iCustomParticleIndex", fx);
 		break;
 	}
+	e = -1;
+	while ((e = FindEntityByClassname(e, "tf_projectile_pipe")) != -1)
+	{
+		if (e >= sizeof(g_bDynPipe) || !g_bDynPipe[e])
+			continue;
+		GetEntPropVector(e, Prop_Data, "m_vecAbsOrigin", pos);
+		if (GetVectorDistance(pos, origin, true) > 48.0 * 48.0)
+			continue;
+		TE_ReadVector("m_vecNormal", g_vDynNormal[e]);
+		g_bDynBoom[e] = true;      // exploded (a pipe removed without exploding throws nothing)
+		break;
+	}
 	return Plugin_Continue;
 }
 
 public void OnEntityDestroyed(int entity)
 {
-	if (entity <= MaxClients || entity >= sizeof(g_bGibRocket) || !g_bGibRocket[entity])
+	if (entity <= MaxClients || entity >= sizeof(g_bGibRocket))
+		return;
+	if (g_bDynPipe[entity])
+	{
+		g_bDynPipe[entity] = false;
+		if (g_bDynBoom[entity])
+			ScatterBomblets(entity, g_vDynNormal[entity], true, BOMB_DYNAMITE);
+		return;
+	}
+	if (!g_bGibRocket[entity])
 		return;
 	g_bGibRocket[entity] = false;
+	ScatterBomblets(entity, g_vGibNormal[entity], g_bGibNormal[entity], BOMB_GIB);
+}
+
+/** OF SpawnBomblets: from the projectile's position, around the hit surface's normal. */
+void ScatterBomblets(int entity, const float hitNormal[3], bool hasNormal, int kind)
+{
 	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
 	if (owner < 1 || owner > MaxClients || !IsClientInGame(owner))
-		return;
+	{
+		if (HasEntProp(entity, Prop_Send, "m_hThrower"))
+			owner = GetEntPropEnt(entity, Prop_Send, "m_hThrower");
+		if (owner < 1 || owner > MaxClients || !IsClientInGame(owner))
+			return;
+	}
 	float pos[3], normal[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
-	normal = g_vGibNormal[entity];
-	if (!g_bGibNormal[entity] || NormalizeVector(normal, normal) < 0.5)
+	normal = hitNormal;
+	if (!hasNormal || NormalizeVector(normal, normal) < 0.5)
 		normal = view_as<float>({ 0.0, 0.0, 1.0 });   // mid-air: as OF, straight up
 	int team = GetClientTeam(owner);
+	int count = kind == BOMB_DYNAMITE ? g_cvDynBombCount.IntValue : BOMBLET_COUNT;
+	Step("%s %d exploded: %d bomblets (owner %N, team %d)", kind == BOMB_DYNAMITE ? "dynamite" : "gib", entity, count, owner, team);
 	// OF SpawnBomblets: pitch the normal by 40-60 degrees, rotate evenly around the normal.
 	float ang[3], base[3], src[3], cross[3];
 	GetVectorAngles(normal, ang);
@@ -2611,18 +3988,18 @@ public void OnEntityDestroyed(int entity)
 	float dot = GetVectorDotProduct(normal, base);
 	for (int i = 0; i < 3; i++)
 		src[i] = pos[i] + normal[i] * 4.0;
-	for (int b = 0; b < BOMBLET_COUNT; b++)
+	for (int b = 0; b < count; b++)
 	{
-		float rot = DegToRad(360.0 / float(BOMBLET_COUNT) * float(b));
+		float rot = DegToRad(360.0 / float(count) * float(b));
 		float c = Cosine(rot), sn = Sine(rot), speed = GetRandomFloat(275.0, 300.0);
 		float vel[3];
 		for (int i = 0; i < 3; i++)
 			vel[i] = (base[i] * c + cross[i] * sn + normal[i] * dot * (1.0 - c)) * speed;
-		SpawnBomblet(owner, team, src, vel);
+		SpawnBomblet(owner, team, src, vel, kind);
 	}
 }
 
-void SpawnBomblet(int owner, int team, const float pos[3], const float vel[3])
+void SpawnBomblet(int owner, int team, const float pos[3], const float vel[3], int kind = BOMB_GIB)
 {
 	int prop = CreateEntityByName("prop_physics_override");
 	if (prop == -1)
@@ -2642,7 +4019,9 @@ void SpawnBomblet(int owner, int team, const float pos[3], const float vel[3])
 	SetEntProp(prop, Prop_Send, "m_CollisionGroup", COLLISION_GROUP_DEBRIS);
 	SetEntProp(prop, Prop_Send, "m_nSkin", (team >= 2 && team <= 5) ? team - 2 : 0);   // RED BLU GRN YLW
 	TeleportEntity(prop, pos, NULL_VECTOR, vel);
-	ParticleOn(prop, BlueParticles(team) ? "drg_cow_rockettrail_normal_blue" : "drg_cow_rockettrail_normal", pos);
+	g_iBombKind[prop] = kind;
+	if (kind == BOMB_GIB)
+		ParticleOn(prop, BlueParticles(team) ? "drg_cow_rockettrail_normal_blue" : "drg_cow_rockettrail_normal", pos);
 	g_vBombVel[prop] = vel;
 	g_vBombPos[prop] = pos;
 	g_flBombBorn[prop] = g_flBombLast[prop] = GetGameTime();
@@ -2673,26 +4052,39 @@ public Action Timer_Bomblet(Handle timer, DataPack dp)
 	g_vBombPos[prop] = p;
 	g_flBombLast[prop] = now;
 	float prev = GetVectorLength(g_vBombVel[prop]), cur = GetVectorLength(v);
-	bool impact = now - g_flBombBorn[prop] >= BOMBLET_POLL * 1.5 && prev > 1.0
+	bool impact = g_iBombKind[prop] == BOMB_GIB && now - g_flBombBorn[prop] >= BOMBLET_POLL * 1.5 && prev > 1.0
 		&& (cur < prev * 0.6 || GetVectorDotProduct(v, g_vBombVel[prop]) < 0.8 * prev * cur);
 	g_vBombVel[prop] = v;
 	if (!impact && now < g_flBombFuse[prop])
 		return Plugin_Continue;
 	float pos[3];
 	GetEntPropVector(prop, Prop_Data, "m_vecAbsOrigin", pos);
+	int kind = g_iBombKind[prop];
 	RemoveEntity(prop);
-	BombletExplode(owner, team, pos, impact);
+	BombletExplode(owner, team, pos, impact, kind);
 	return Plugin_Stop;
 }
 
-void BombletExplode(int owner, int team, const float pos[3], bool impact)
+void BombletExplode(int owner, int team, const float pos[3], bool impact, int kind = BOMB_GIB)
 {
 	int boom = CreateEntityByName("env_explosion");
 	if (boom == -1)
 		return;
-	DispatchKeyValue(boom, "iMagnitude", BOMBLET_DAMAGE);
-	DispatchKeyValue(boom, "iRadiusOverride", BOMBLET_RADIUS);
-	DispatchKeyValue(boom, "spawnflags", "44");   // no fireball, smoke or sparks: the energy core instead
+	if (kind == BOMB_DYNAMITE)
+	{
+		char v[12];
+		g_cvDynBombDamage.GetString(v, sizeof(v));
+		DispatchKeyValue(boom, "iMagnitude", v);
+		g_cvDynBombRadius.GetString(v, sizeof(v));
+		DispatchKeyValue(boom, "iRadiusOverride", v);
+		DispatchKeyValue(boom, "spawnflags", "0");    // the stock explosion (fireball, sound)
+	}
+	else
+	{
+		DispatchKeyValue(boom, "iMagnitude", BOMBLET_DAMAGE);
+		DispatchKeyValue(boom, "iRadiusOverride", BOMBLET_RADIUS);
+		DispatchKeyValue(boom, "spawnflags", "44");   // no fireball, smoke or sparks: the energy core instead
+	}
 	DispatchSpawn(boom);
 	if (owner)
 	{
@@ -2701,8 +4093,9 @@ void BombletExplode(int owner, int team, const float pos[3], bool impact)
 	}
 	TeleportEntity(boom, pos, NULL_VECTOR, NULL_VECTOR);
 	AcceptEntityInput(boom, "Explode");
-	ParticleOn(0, BlueParticles(team) ? "drg_cow_explosioncore_normal_blue" : "drg_cow_explosioncore_normal", pos);
-	Step("gib bomblet exploded (%s)", impact ? "impact" : "fuse");
+	if (kind == BOMB_GIB)
+		ParticleOn(0, BlueParticles(team) ? "drg_cow_explosioncore_normal_blue" : "drg_cow_explosioncore_normal", pos);
+	Step("%s bomblet exploded (%s) at %.0f %.0f %.0f", kind == BOMB_DYNAMITE ? "dynamite" : "gib", impact ? "impact" : "fuse", pos[0], pos[1], pos[2]);
 	CreateTimer(0.5, Timer_KillEnt, EntIndexToEntRef(boom), TIMER_FLAG_NO_MAPCHANGE);
 }
 
@@ -2799,26 +4192,77 @@ public Action Timer_EnablePack(Handle timer, int ref)
 	return Plugin_Stop;
 }
 
-void SpawnPackWeapon(int client, int pack)
+/** A weighted pick from the weapon pool (weapons.cfg row), skipping what the client holds
+ *  (client 0: nothing held); -1 when the pool is empty. */
+int PoolPick(int client)
 {
 	float total = 0.0;
 	for (int i = 0; i < g_WWeight.Length; i++)
-		if (FindWeaponByDef(client, g_WDef.Get(i)) == -1)
-			total += view_as<float>(g_WWeight.Get(i));
+		if (client == 0 || FindWeaponByDef(client, g_WDef.Get(i)) == -1)
+			total += PoolWeight(i);
 	if (total <= 0.0)
-		return;
+		return -1;
 	float roll = GetURandomFloat() * total;
 	int pick = -1;
 	for (int i = 0; i < g_WWeight.Length; i++)
 	{
-		float w = g_WWeight.Get(i);
-		if (w <= 0.0 || FindWeaponByDef(client, g_WDef.Get(i)) != -1)
+		float w = PoolWeight(i);
+		if (w <= 0.0 || (client != 0 && FindWeaponByDef(client, g_WDef.Get(i)) != -1))
 			continue;
 		roll -= w;
 		pick = i;
 		if (roll <= 0.0)
 			break;
 	}
+	return pick;
+}
+
+/** Testing: sm_tf2cc_pooltest <rolls> - how often each weapon comes out of the pool. */
+public Action Cmd_PoolTest(int client, int args)
+{
+	char a[16], item[64];
+	GetCmdArg(1, a, sizeof(a));
+	int n = StringToInt(a) > 0 ? StringToInt(a) : 10000;
+	int counts[128];
+	for (int r = 0; r < n; r++)
+	{
+		int i = RarePick(0);             // as an ammo pack rolls (SpawnPackWeapon)
+		if (i < 0)
+			i = PoolPick(0);
+		if (i >= 0 && i < sizeof(counts))
+			counts[i]++;
+	}
+	int kinds[5];
+	for (int i = 0; i < g_WItem.Length && i < sizeof(counts); i++)
+	{
+		g_WItem.GetString(i, item, sizeof(item));
+		kinds[g_WKind.Get(i)] += counts[i];
+		ReplyToCommand(client, "pool %-26s kind %d weight %.0f rare %.3f -> %d", item, g_WKind.Get(i), PoolWeight(i), view_as<float>(g_WRare.Get(i)), counts[i]);
+	}
+	ReplyToCommand(client, "pool %d rolls: roster %d, old default %d, new %d, variant %d, April Fools copy %d", n, kinds[KIND_ROSTER], kinds[KIND_OLDDEFAULT], kinds[KIND_NEW], kinds[KIND_VARIANT], kinds[KIND_AFCOPY]);
+	return Plugin_Handled;
+}
+
+/** A rare pack-only weapon (weapons.cfg pack_rare, e.g. 0.01 = 1 pack roll in 100), rolled before
+ *  the weighted pick; such rows have pack_weight 0, so no other pool offers them. -1 = none. */
+int RarePick(int client)
+{
+	for (int i = 0; i < g_WRare.Length; i++)
+	{
+		float chance = g_WRare.Get(i);
+		if (chance <= 0.0 || PoolKindOff(i) || !HasPickupModel(i) || (client != 0 && FindWeaponByDef(client, g_WDef.Get(i)) != -1))
+			continue;
+		if (GetURandomFloat() < chance)
+			return i;
+	}
+	return -1;
+}
+
+void SpawnPackWeapon(int client, int pack)
+{
+	int pick = RarePick(client);
+	if (pick < 0)
+		pick = PoolPick(client);
 	if (pick < 0)
 		return;
 	PickupData d;
@@ -2830,7 +4274,7 @@ void SpawnPackWeapon(int client, int pack)
 	float pos[3];
 	GetEntPropVector(pack, Prop_Data, "m_vecAbsOrigin", pos);
 	pos[2] += 16.0;
-	int skin = GetClientTeam(client) == 3 ? 1 : 0;
+	int skin = TeamSkin(GetClientTeam(client));
 	SpawnPickup(d, model, pos, view_as<float>({ 0.0, 0.0, 120.0 }), skin);
 }
 
@@ -2868,6 +4312,7 @@ public void Event_Death(Event event, const char[] name, bool dontBroadcast)
 	}
 	if (victim && g_bMerc[victim])
 	{
+		RemoveBody(victim);
 		// The game plays the class death scream (Soldier.Death / CritDeath / MeleeDeath /
 		// ExplosionDeath) right after this event, when g_bMerc is already off: the corpse flag
 		// keeps the sound hook rewriting it to one Merc death line. If no scream comes (silent
@@ -2940,7 +4385,28 @@ ArrayList ConceptList(const char[] concept)
 	FormatEx(key, sizeof(key), "mercenary/%s0", concept);
 	if (g_Concepts.GetValue(key, l) && l.Length)
 		return l;
+	// Context variants of a concept the Merc voice set has only once: the Soldier's response
+	// rules pick a Help! line by context (on a capturable point, defending one, at the payload
+	// cart: TF2C talker/soldier.txt PlayerHelpCapture/Capture2/CaptureCart/Defend) and thank a
+	// Medic or Engineer automatically (HealThanks after an uber, teleporter thanks). Those
+	// became "_helpmecapture", "_thanksfortheheal"... with no Merc line, so he was silent.
+	char alias[32];
+	if (ConceptAlias(concept, alias, sizeof(alias)))
+		return ConceptList(alias);
 	return null;
+}
+
+bool ConceptAlias(const char[] concept, char[] alias, int maxlen)
+{
+	static const char help[][] = { "_helpmecapture", "_helpmedefend", "_standonthepoint", "_cartstaycloseoffense" };
+	static const char thanks[][] = { "_thanksfortheheal", "_thanksfortheteleporter" };
+	for (int i = 0; i < sizeof(help); i++)
+		if (StrEqual(concept, help[i]))
+			return strcopy(alias, maxlen, "_helpme") > 0;
+	for (int i = 0; i < sizeof(thanks); i++)
+		if (StrEqual(concept, thanks[i]))
+			return strcopy(alias, maxlen, "_thanks") > 0;
+	return false;
 }
 
 bool IsPainConcept(const char[] concept)
@@ -2993,9 +4459,48 @@ bool SpeakTargeted(int speaker, const char[] kind, const char[] role = "mercenar
 /** Coated in Jarate / Mad Milk / gas: a random negative or jeers line (cooldown 3 s). */
 float g_flNextCoatLine[MAXPLAYERS + 1];
 
+void ChargeSounds(int client, int cond, bool added)
+{
+	if (client < 1 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client))
+		return;
+	if (TF2_GetPlayerClass(client) == TFClass_DemoMan)
+	{
+		char snd[48];
+		strcopy(snd, sizeof(snd), cond == 17 ? "tf2cc.DemoCharge.Charging" : added ? "tf2cc.DemoCharge.ChargeCritOn" : "tf2cc.DemoCharge.ChargeCritOff");
+		if (cond == 17 && !added)
+			return;
+		EmitGameSoundToAll(snd, client);
+		Step("charge sound %N (Demoman, cond %d %s): %s", client, cond, added ? "on" : "off", snd);
+		return;
+	}
+	if (cond == 17 && added && IsMerc(client))
+	{
+		float t = GetGameTime();
+		if (t < g_flNextSpeak[client])
+		{
+			Step("charge yell %N: speech gap", client);
+			return;
+		}
+		if (Speak(client, "_chargeyell"))
+			g_flNextSpeak[client] = t + 1.5;
+	}
+}
+
+public void TF2_OnConditionRemoved(int client, TFCond condition)
+{
+	if (view_as<int>(condition) == 35)
+		ChargeSounds(client, 35, false);
+}
+
 public void TF2_OnConditionAdded(int client, TFCond condition)
 {
 	int c = view_as<int>(condition);
+	// Shield charge (17) / its crits (35): the clients' own scream and crit sting are muted by the
+	// stock-name overrides in custom_level_sounds.txt (gen_schema DEMO_CHARGE_SOUNDS); a Demoman's
+	// charge gets them back from the server (user 2026-11-17: only for the Demoman), the Merc's
+	// chainsaw charge yells one of his own lines instead.
+	if (c == 17 || c == 35)
+		ChargeSounds(client, c, true);
 	// A Soldier taunt scene that did not come from the taunt key (bots call Taunt() directly):
 	// stop it and play the Merc taunt instead.
 	if (c == 7 && g_cvTaunts.BoolValue && IsMerc(client) && !g_bTaunting[client] && !HoldsLunchbox(client))
@@ -3004,6 +4509,26 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		TF2_RemoveCondition(client, condition);
 		RequestFrame(Frame_MercTaunt, GetClientUserId(client));
 		return;
+	}
+	// A Civilian's proximity aura (cond 145, measured: on while a teammate Civilian stands within
+	// range) or his Umbrella / Derby Cane boost (143 damage, 137 speed): a positive Merc line,
+	// at most one per 20 s and on half of the occasions (TF2C's stock classes have no response
+	// rule for being buffed; the user asked for one, 2026-11-16).
+	if ((c == 145 || c == 143 || c == 137) && IsMerc(client) && IsPlayerAlive(client))
+	{
+		float t = GetGameTime();
+		if (t >= g_flNextBuffLine[client] && t >= g_flNextSpeak[client])
+		{
+			g_flNextBuffLine[client] = t + 20.0;
+			if (GetURandomFloat() < 0.5)
+			{
+				Step("buffed %N (cond %d): positive line", client, c);
+				if (Speak(client, "_positivevocalization"))
+					g_flNextSpeak[client] = t + 1.5;
+			}
+			else
+				Step("buffed %N (cond %d): no line this time", client, c);
+		}
 	}
 	if ((c != 24 && c != 27 && c != 123) || !IsMerc(client))   // TF_COND_URINE, _MAD_MILK, _GAS
 		return;
@@ -3305,7 +4830,7 @@ bool DropActive(int client, bool tell)
 		return false;
 	}
 	char fallback[64];
-	DefaultForSlot(s, fallback, sizeof(fallback));
+	DefaultForSlot(client, s, fallback, sizeof(fallback));
 	int others = 0;
 	for (int k = 0; k < SLOTS; k++)
 		if (k != s && GetPlayerWeaponSlot(client, k) > MaxClients)
@@ -3325,16 +4850,18 @@ bool DropActive(int client, bool tell)
 	RemoveWeapon(client, w);
 	strcopy(g_sInv[client][s], sizeof(g_sInv[][]), fallback);
 	if (fallback[0])
-		GiveItem(client, fallback);
+		GiveItem(client, fallback, s);
 	KeepInHand(client, -1, s);
 	return true;
 }
 
-void DefaultForSlot(int slot, char[] out, int maxlen)
+void DefaultForSlot(int client, int slot, char[] out, int maxlen)
 {
-	out[0] = '\0';
+	strcopy(out, maxlen, g_sDefault[client][slot]);
+	if (out[0])
+		return;
 	for (int i = 0; i < g_WItem.Length; i++)
-		if (g_WDefault.Get(i) && g_WSlot.Get(i) == slot)
+		if (g_WDefault.Get(i) && g_WKind.Get(i) != KIND_OLDDEFAULT && g_WSlot.Get(i) == slot)
 		{
 			g_WItem.GetString(i, out, maxlen);
 			return;
@@ -3367,6 +4894,105 @@ public Action Cmd_UseTest(int client, int args)
 }
 
 /* ------------------------------------------------------------------ */
+/* Bottle bodygroup on the Merc                                       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * TF2C turns a tf_weapon_bottle given to a Soldier into a tf_weapon_shovel (the Demoman/Soldier
+ * melee translation), and a shovel has no broken state: a Demoman's bottle picked up by a Merc
+ * never shattered. The native bottle on a crit hit sets m_bBroken and its m_nBody to 1 (the
+ * "broken" bodygroup of both v_bottle_demoman and w_bottle; measured on the test copy); the
+ * client draws the viewmodel's from m_bBroken. For a Merc the plugin does the same: m_nBody 1 on
+ * the weapon (world model) and on his viewmodel while it is out, mended at resupply/respawn like
+ * the stock bottle. (Knives keep their class on the Merc: the bloodied bodygroup is native.)
+ */
+
+bool IsBottleItem(int weapon)
+{
+	if (weapon <= MaxClients)
+		return false;
+	char cls[48];
+	ItemClassOf(ItemDef(weapon), cls, sizeof(cls));
+	return StrEqual(cls, "tf_weapon_bottle");
+}
+
+bool IsBrokenBottle(int weapon)
+{
+	char key[12];
+	IntToString(EntIndexToEntRef(weapon), key, sizeof(key));
+	int v;
+	return g_Broken != null && g_Broken.GetValue(key, v);
+}
+
+void SetViewBody(int client, int body)
+{
+	int vm = GetEntPropEnt(client, Prop_Send, "m_hViewModel", 0);
+	if (vm > MaxClients)
+		SetEntProp(vm, Prop_Send, "m_nBody", body);
+}
+
+public void Event_Hurt(Event event, const char[] name, bool dontBroadcast)
+{
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
+	if (!IsMerc(attacker) || !event.GetBool("crit"))
+		return;
+	int w = GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon");
+	if (!IsBottleItem(w) || HasEntProp(w, Prop_Send, "m_bBroken") || IsBrokenBottle(w))
+		return;      // a real tf_weapon_bottle breaks by itself
+	if (g_Broken == null)
+		g_Broken = new StringMap();
+	char key[12];
+	IntToString(EntIndexToEntRef(w), key, sizeof(key));
+	g_Broken.SetValue(key, 1);
+	SetEntProp(w, Prop_Send, "m_nBody", 1);
+	SetViewBody(attacker, 1);
+	Step("bottle broken: %N (def %d)", attacker, ItemDef(w));
+}
+
+public void Hook_WeaponSwitchPost(int client, int weapon)
+{
+	if (!IsMerc(client) || g_Broken == null || g_Broken.Size == 0)
+		return;
+	RequestFrame(Frame_ViewBody, GetClientUserId(client));   // after the deploy has set the viewmodel
+}
+
+/** The viewmodel's body follows the weapon in hand: 1 for a broken bottle, back to 0 after one. */
+public void Frame_ViewBody(int userid)
+{
+	int client = GetClientOfUserId(userid);
+	if (!IsMerc(client))
+		return;
+	int w = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	bool broken = IsBrokenBottle(w);
+	if (broken)
+		SetViewBody(client, 1);
+	else if (g_bBrokenView[client] || IsBottleItem(w))
+		SetViewBody(client, 0);
+	g_bBrokenView[client] = broken;
+}
+
+/** Resupply/respawn mends the bottle (as the stock one is given whole again). */
+void MendBottles(int client)
+{
+	if (g_Broken == null || g_Broken.Size == 0)
+		return;
+	int max = GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons");
+	char key[12];
+	for (int i = 0; i < max; i++)
+	{
+		int w = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", i);
+		if (w <= MaxClients || !IsBrokenBottle(w))
+			continue;
+		IntToString(EntIndexToEntRef(w), key, sizeof(key));
+		g_Broken.Remove(key);
+		SetEntProp(w, Prop_Send, "m_nBody", 0);
+		if (GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon") == w)
+			SetViewBody(client, 0);
+		Step("bottle mended: %N", client);
+	}
+}
+
+/* ------------------------------------------------------------------ */
 /* Taunts                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -3390,6 +5016,8 @@ static const char g_sWeaponTaunts[][] =
 	"merc_crowbar=taunt03:1.83", "merc_leadpipe=taunt03:1.83", "merc_knife=taunt03:1.83",
 	"merc_fists=taunt04:2.23", "merc_gib=taunt04:2.23", "merc_chainsaw=taunt04:2.23",
 	"merc_pistol=taunt_bond:2.95", "merc_akimbo=taunt_bond:2.95", "merc_revolver=taunt_bond:2.95",
+	// The Merc copy of a picked-up Pyro flare gun (other old items use their roster weapon's).
+	"merc_flaregun_4rdm=taunt_bond:2.95",
 	// Stock weapons he picked up: by slot, like OF's group fallbacks (PRIMARY -> super shotgun set...).
 	"slot0=taunt01:3.37", "slot1=taunt02:2.93:_laughevil:1.66", "slot2=taunt03:1.83",
 	"default=taunt01:3.37"
@@ -3469,7 +5097,16 @@ void WeaponTauntSpec(int client, char[] spec, int maxlen)
 		if (s >= 0)
 			FormatEx(id, sizeof(id), "slot%d", s);
 	}
-	char fallback[64];
+	char canon[48];
+	if (mi >= 0)
+		g_WCanon.GetString(mi, canon, sizeof(canon));    // old TF2C items: the roster weapon they stand for
+	if (TauntSpecFor(id, spec, maxlen) || (canon[0] && TauntSpecFor(canon, spec, maxlen)))
+		return;
+	TauntSpecFor("default", spec, maxlen);
+}
+
+bool TauntSpecFor(const char[] id, char[] spec, int maxlen)
+{
 	for (int i = 0; i < sizeof(g_sWeaponTaunts); i++)
 	{
 		int eq = FindCharInString(g_sWeaponTaunts[i], '=');
@@ -3478,12 +5115,10 @@ void WeaponTauntSpec(int client, char[] spec, int maxlen)
 		if (StrEqual(key, id))
 		{
 			strcopy(spec, maxlen, g_sWeaponTaunts[i][eq + 1]);
-			return;
+			return true;
 		}
-		if (StrEqual(key, "default"))
-			strcopy(fallback, sizeof(fallback), g_sWeaponTaunts[i][eq + 1]);
 	}
-	strcopy(spec, maxlen, fallback);
+	return false;
 }
 
 /** Sequence index on the player's current model (VScript LookupSequence), -1 if missing. */
@@ -3620,6 +5255,7 @@ void StartMercTaunt(int client, int seq, const char[] seqName, float duration, c
 	float eyes0[3];
 	GetClientEyeAngles(client, eyes0);
 	g_flTauntYaw[client] = eyes0[1];
+	Step("taunt yaw %N: %.1f", client, eyes0[1]);
 	float cin, cout;
 	TauntWindow(seqName, cin, cout);
 	float seqLen = SequenceDurationOf(client, seq);
@@ -3726,6 +5362,7 @@ public Action Timer_BondShot(Handle timer, int userid)
 	float pos[3];
 	TR_GetEndPosition(pos, tr);
 	delete tr;
+	Step("bond shot %N: yaw %.0f, trace hit %d", client, ang[1], hit);
 	if (hit < 1 || hit > MaxClients || !IsPlayerAlive(hit) || GetClientTeam(hit) == GetClientTeam(client))
 		return Plugin_Stop;
 	float force[3], fang[3];
@@ -3734,8 +5371,32 @@ public Action Timer_BondShot(Handle timer, int userid)
 	GetAngleVectors(fang, force, NULL_VECTOR, NULL_VECTOR);
 	ScaleVector(force, 25000.0);
 	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	g_iBondVictim = hit;          // the death notice shows the Heavy's taunt-kill icon (Event_DeathPre)
+	g_iBondKiller = client;
 	SDKHooks_TakeDamage(hit, client, client, 500.0, DMG_BULLET, weapon > MaxClients ? weapon : -1, force, pos);
+	g_iBondVictim = g_iBondKiller = 0;
 	return Plugin_Stop;
+}
+
+/** The bond taunt kill reports 5205's Heavy taunt-kill icon ("taunt_heavy", user 2026-11-17)
+ *  instead of the pistol in hand: player_death is fired inside SDKHooks_TakeDamage above. */
+public Action Event_DeathPre(Event event, const char[] name, bool dontBroadcast)
+{
+	int dv = GetClientOfUserId(event.GetInt("userid"));
+	if (dv > 0 && g_iRailCustom[dv] && GetGameTime() - g_flRailCustomAt[dv] < 0.1)
+	{
+		event.SetInt("customkill", g_iRailCustom[dv]);
+		g_iRailCustom[dv] = 0;
+		Step("railgun headshot kill: %N, customkill headshot", dv);
+		return Plugin_Changed;
+	}
+	if (g_iBondVictim == 0 || GetClientOfUserId(event.GetInt("userid")) != g_iBondVictim
+		|| GetClientOfUserId(event.GetInt("attacker")) != g_iBondKiller)
+		return Plugin_Continue;
+	event.SetString("weapon", "taunt_heavy");
+	event.SetString("weapon_logclassname", "taunt_heavy");
+	Step("bond taunt kill: %N -> %N, death notice taunt_heavy", g_iBondKiller, g_iBondVictim);
+	return Plugin_Changed;
 }
 
 public Action Timer_TauntEnd(Handle timer, int userid)

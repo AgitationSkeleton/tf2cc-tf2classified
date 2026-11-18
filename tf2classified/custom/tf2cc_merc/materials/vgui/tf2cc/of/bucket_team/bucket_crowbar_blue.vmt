@@ -1,8 +1,0 @@
-"UnlitGeneric"
-{
-	"$basetexture" "tf2cc/of/bucket_team/bucket_crowbar_blue"
-	"$translucent" "1"
-	"$vertexcolor" "1"
-	"$vertexalpha" "1"
-	"$ignorez" "1"
-}

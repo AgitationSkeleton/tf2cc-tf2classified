@@ -67,6 +67,9 @@ of TF2 Classified's deathmatch maps. Its credits:
 | `sound/tf2cc/of/`, `scripts/items/custom_level_sounds.txt` | Open Fortress weapon sounds and their sound scripts (renamed `tf2cc.*`) |
 | `sound/vo/tf2cc/`, `sound/vo/custom/` | Mercenary voice (Stachekip, Open Fortress / TF2 Classified pack); Civilian lines (Benjamoose) |
 | `models/tf2cc/marxvee/` and their materials | MarxVee pack: Machine Gun and Medkit (medkit green/yellow skins by tf2cc's tools) |
+| `models/tf2cc/oldmerc/`, `models/tf2cc/oldclass/` and their materials and sounds | TF2 Classic Team: weapons of TF2 Classic 2.0.0 beta 2-4, the TF2 Classic 2.2.3 items (Overhealer, Makeshift Mutilator, Rescue Ranger port) and the 4dm/4rdm map set (TF2C Presplit / TDC Team); green/yellow skins and team icons recoloured by tf2cc's tools |
+| `models/tf2cc/akimbo_stock/` | the stock TF2 Classified pistol (TF2 Classic Team) placed in Open Fortress's akimbo rig by tf2cc's tools |
+| `resource/svgs/deathnotice/tf2cc_*.svg` | Kill-feed icons made by tf2cc's tools in TF2 Classified's stock icon style. The China Lake, Quad Launcher, Bouncer, Eternal Shotgun and Saw Ballista icons are traced from Open Fortress's own kill-feed sprites (Open Fortress Team); the others are drawn from the weapon models, using Open Fortress's icons as reference |
 
 Some MarxVee-pack assets were made by community members who aren't named in the pack.
 If you made one of them, please get in touch so you can be credited.

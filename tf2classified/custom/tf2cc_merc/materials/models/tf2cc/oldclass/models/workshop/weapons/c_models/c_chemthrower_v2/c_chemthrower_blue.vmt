@@ -1,0 +1,9 @@
+"Patch"
+{
+	include "materials/models/tf2cc/oldclass/models/workshop/weapons/c_models/c_chemthrower_v2/c_chemthrower.vmt"
+	
+	insert
+	{
+	"$baseTexture" "models/tf2cc/oldclass/models/workshop/weapons/c_models/c_chemthrower/c_chemthrower_blue"
+	}
+}

@@ -13,6 +13,7 @@ downloads table).
 """
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -24,8 +25,12 @@ ASSETS = os.path.join(ROOT, "config", "sourcemod", "configs", "tf2cc_tf2c", "ass
 # Staged paths the plugin uses directly (before versioning; version_assets.py rewrites them).
 PLUGIN_ASSETS = [("merc_model", "models/player/tf2cc/merc.mdl"),
                  ("bomblet_model", "models/tf2cc/of/weapons/w_models/w_grenade_bomblet.mdl"),
-                 ("bond_sound", "sound/tf2cc/of/player/taunt_bond_pistol.wav")]
+                 ("bond_sound", "sound/tf2cc/of/player/taunt_bond_pistol.wav"),
+                 ("bouncer_sound", "sound/tf2cc/of/weapons/bouncer_nade_impact.wav")]
 SKIP_EXT = (".nut",)
+# Staged (FastDL keeps them, clients cache them) but not in the downloads table: kill icons no item
+# uses any more (30206, the 4rdm lead pipe, was removed on 2026-11-16).
+NO_DOWNLOAD = {"resource/svgs/deathnotice/tf2cc_merc_leadpipe_4rdm_v1.svg"}
 
 
 def run(*args):
@@ -47,12 +52,21 @@ def main():
             raise SystemExit("plugin asset %s not staged" % rel)
         lines.append('\t"%s"\t"%s"' % (key, rel[len("sound/"):] if rel.startswith("sound/") else rel))
     open(ASSETS, "w", encoding="utf-8", newline="\n").write("\n".join(lines + ["}", ""]))
+    # Hand-made files staged as they are (tools/tf2c/static/<path> -> <path>): kill icons
+    # (resource/svgs/deathnotice/<item_iconname>.svg, read by the client at game start).
+    static = os.path.join(HERE, "static")
+    for dp, _, names in os.walk(static):
+        for n in names:
+            rel = os.path.relpath(os.path.join(dp, n), static)
+            dst = os.path.join(STAGE, rel)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(os.path.join(dp, n), dst)
     run(os.path.join(HERE, "version_assets.py"), *(["--refresh"] if a.refresh else []))
     files = []
     for dp, _, names in os.walk(STAGE):
         for n in names:
             rel = os.path.relpath(os.path.join(dp, n), STAGE).replace(os.sep, "/")
-            if not rel.endswith(SKIP_EXT):
+            if not rel.endswith(SKIP_EXT) and rel not in NO_DOWNLOAD:
                 files.append(rel)
     files.sort()
     with open(DOWNLOADS, "w", encoding="utf-8", newline="\n") as f:
